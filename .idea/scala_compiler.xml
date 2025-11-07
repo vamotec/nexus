@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ScalaCompilerConfiguration">
+    <option name="separateProdTestSources" value="true" />
+    <profile name="sbt 1" modules="nexus,nexus.nexus-application,nexus.nexus-domain,nexus.nexus-infrastructure,nexus.nexus-presentation" />
+    <profile name="sbt 2" modules="nexus.main,nexus.nexus-application.main,nexus.nexus-application.test,nexus.nexus-domain.main,nexus.nexus-domain.test,nexus.nexus-infrastructure.main,nexus.nexus-infrastructure.test,nexus.nexus-presentation.main,nexus.nexus-presentation.test,nexus.test">
+      <option name="deprecationWarnings" value="true" />
+      <option name="uncheckedWarnings" value="true" />
+      <option name="featureWarnings" value="true" />
+      <parameters>
+        <parameter value="-Xfatal-warnings" />
+      </parameters>
+    </profile>
+  </component>
+</project>

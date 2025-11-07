@@ -1,0 +1,147 @@
+syntax = "proto3";
+
+package isaac_sim;
+
+import "common.proto";
+
+option java_package = "app.mosia.nexus.integration.grpc";
+option java_multiple_files = true;
+
+// Service for managing Isaac Sim simulation instances
+service IsaacSimService {
+  // Creates a new simulation session
+  rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse);
+
+  // Starts the simulation
+  rpc StartSimulation(StartSimulationRequest) returns (StartSimulationResponse);
+
+  // Stops the simulation
+  rpc StopSimulation(StopSimulationRequest) returns (StopSimulationResponse);
+
+  // Gets the status of a session
+  rpc GetSessionStatus(GetSessionStatusRequest) returns (common.SessionStatus);
+
+  // Updates the scene configuration dynamically
+  rpc UpdateScene(UpdateSceneRequest) returns (UpdateSceneResponse);
+
+  // Gets the endpoint for video streaming
+  rpc GetStreamEndpoint(GetStreamEndpointRequest) returns (StreamEndpoint);
+
+  // Health check for the service
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+
+  // Bi-directional stream for robot control
+  rpc StreamRobotControl(stream RobotAction) returns (stream RobotState);
+}
+
+// Request to create a session
+message CreateSessionRequest {
+  string session_id = 1;
+  common.SceneConfig scene_config = 2;
+  common.StreamConfig stream_config = 3;
+}
+
+message CreateSessionResponse {
+  bool success = 1;
+  string message = 2;
+  string session_id = 3;
+  common.SessionStatus status = 4;
+  StreamEndpoint stream_endpoint = 5;
+}
+
+// Request to start simulation
+message StartSimulationRequest {
+  string session_id = 1;
+  bool real_time = 2;
+  double time_scale = 3;
+}
+
+message StartSimulationResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// Request to stop simulation
+message StopSimulationRequest {
+  string session_id = 1;
+  bool cleanup = 2; // If true, cleans up all resources
+}
+
+message StopSimulationResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// Request to get session status
+message GetSessionStatusRequest {
+  string session_id = 1;
+}
+
+// Request to update the scene
+message UpdateSceneRequest {
+  string session_id = 1;
+  repeated common.Obstacle obstacles_to_add = 2;
+  repeated string obstacles_to_remove = 3; // List of prim paths
+  common.Position robot_position = 4;
+}
+
+message UpdateSceneResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// Request to get stream endpoint
+message GetStreamEndpointRequest {
+  string session_id = 1;
+}
+
+// Streaming endpoint details
+message StreamEndpoint {
+  string protocol = 1;
+  string url = 2;
+  int32 port = 3;
+  map<string, string> metadata = 4;
+  int32 width = 5;
+  int32 height = 6;
+}
+
+// Health check request
+message HealthCheckRequest {
+  bool detailed = 1;
+}
+
+// Health check response
+message HealthCheckResponse {
+  bool healthy = 1;
+  string version = 2;
+  int32 active_sessions = 3;
+  // Forward compatibility with resource.proto's GPUStatus
+  // google.protobuf.Any gpu_status = 4;
+}
+
+// Command for one or more joints
+message JointCommand {
+  string type = 1; // e.g., "position", "velocity"
+  repeated string names = 2;
+  repeated double values = 3;
+}
+
+// Action command sent to the robot
+message RobotAction {
+  string session_id = 1;
+  repeated JointCommand joint_commands = 2;
+}
+
+// State of one or more joints
+message JointState {
+  repeated string names = 1;
+  repeated double positions = 2;
+  repeated double velocities = 3;
+}
+
+// State feedback from the robot
+message RobotState {
+  string session_id = 1;
+  int64 timestamp = 2; // nanoseconds
+  JointState joint_state = 3;
+}

@@ -1,0 +1,93 @@
+syntax = "proto3";
+
+package training;
+
+import "common.proto";
+
+option java_package = "app.mosia.nexus.integration.grpc";
+option java_multiple_files = true;
+
+// Service for managing AI training tasks
+service TrainingService {
+  // Starts a new training job
+  rpc StartTraining(StartTrainingRequest) returns (StartTrainingResponse);
+
+  // Stops a training job
+  rpc StopTraining(StopTrainingRequest) returns (StopTrainingResponse);
+
+  // Gets the progress of a training job (stream)
+  rpc GetTrainingProgress(GetTrainingProgressRequest) returns (stream TrainingProgress);
+
+  // Gets the final result of a completed training job
+  rpc GetTrainingResult(GetTrainingResultRequest) returns (TrainingResult);
+}
+
+// Request to start training
+message StartTrainingRequest {
+  string session_id = 1; // Associated simulation session
+
+  enum Algorithm {
+    PPO = 0;
+    SAC = 1;
+    TD3 = 2;
+    DQN = 3;
+  }
+  Algorithm algorithm = 2;
+
+  int32 epochs = 3;
+  int32 batch_size = 4;
+  double learning_rate = 5;
+  string reward_function = 6;
+  map<string, string> hyperparameters = 7;
+}
+
+message StartTrainingResponse {
+  bool success = 1;
+  string message = 2;
+  string training_id = 3;
+}
+
+// Request to stop training
+message StopTrainingRequest {
+  string training_id = 1;
+  bool save_checkpoint = 2;
+}
+
+message StopTrainingResponse {
+  bool success = 1;
+  string checkpoint_path = 2;
+}
+
+// Request to get training progress
+message GetTrainingProgressRequest {
+  string training_id = 1;
+}
+
+// Streamed training progress
+message TrainingProgress {
+  int32 current_epoch = 1;
+  int32 total_epochs = 2;
+  double progress = 3; // 0.0 - 1.0
+  double current_reward = 4;
+  double average_reward = 5;
+  double loss = 6;
+  int32 episode_length = 7;
+  map<string, double> metrics = 8;
+  int64 timestamp = 9;
+}
+
+// Request to get training result
+message GetTrainingResultRequest {
+  string training_id = 1;
+}
+
+// Final result of a training job
+message TrainingResult {
+  bool success = 1;
+  string model_path = 2;
+  string checkpoint_path = 3;
+  double final_reward = 4;
+  double success_rate = 5;
+  int64 training_time_seconds = 6;
+  map<string, double> final_metrics = 7;
+}

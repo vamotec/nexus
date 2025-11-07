@@ -1,0 +1,14 @@
+package app.mosia.nexus.application.dto.request.auth
+
+import sttp.tapir.Schema
+import zio.json.*
+
+case class DeviceInfo(
+  @jsonField("device_id") deviceId: String,
+  @jsonField("device_name") deviceName: String,
+  platform: String, // "ios" | "android" | "web"
+  @jsonField("os_version") osVersion: String,
+  @jsonField("app_version") appVersion: String,
+  @jsonField("push_token") pushToken: Option[String] = None
+) derives JsonCodec,
+      Schema
