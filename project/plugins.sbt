@@ -22,8 +22,7 @@ addSbtPlugin("com.timushev.sbt" % "sbt-updates" % "0.6.4")
 // 依赖树可视化
 addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.10.0-RC1")
 
-
 libraryDependencies ++= Seq(
   "com.thesamet.scalapb" %% "compilerplugin" % "0.11.20",
-  "com.thesamet.scalapb.zio-grpc" %% "zio-grpc-codegen" % "0.6.3",
+  "com.thesamet.scalapb.zio-grpc" %% "zio-grpc-codegen" % "0.6.3"
 )

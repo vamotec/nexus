@@ -1,0 +1,41 @@
+package app.mosia.nexus
+package application.dto.model.simulation
+
+import application.dto.model.scene.SceneConfigDto
+import application.dto.{given_ArgBuilder_Json, given_Schema_Any_Json}
+import domain.model.simulation.SimulationParams
+
+import caliban.schema.{ArgBuilder, Schema as Cs}
+import sttp.tapir.Schema
+import zio.json.*
+import zio.*
+import zio.json.ast.Json
+
+/** 仿真配置 DTO - 用于创建仿真时的完整配置
+  *
+  * 采用混合策略的纯数据传输对象：
+  *   - 使用简化的 SceneConfigDto（而非完整的 Domain SceneConfig）
+  *   - 直接复用稳定的 SimulationParams
+  *   - 训练配置使用 JSON（灵活处理不同算法）
+  *   - 支持高级配置扩展
+  */
+case class SimulationConfigDto(
+  // 场景配置 (简化 DTO)
+  sceneConfig: SceneConfigDto,
+
+  // 仿真参数 (复用 Domain 稳定配置)
+  simulationParams: SimulationParams,
+
+  // 训练配置 (使用 JSON 灵活处理)
+  trainingConfig: Option[Json] = None,
+  // 例如: {"algorithm": "PPO", "episodes": 1000, "learningRate": 0.001}
+
+  // 高级配置 (可选，用于扩展功能)
+  advancedConfig: Option[Json] = None,
+  // 例如: {"parallel": true, "workers": 4, "checkpoint": "path/to/model"}
+
+  // 元数据 (可选)
+  metadata: Option[Map[String, String]] = None
+) derives JsonCodec,
+      Cs.SemiAuto,
+      ArgBuilder

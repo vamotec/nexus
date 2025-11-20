@@ -2,13 +2,30 @@
 <project version="4">
   <component name="ScalaCompilerConfiguration">
     <option name="separateProdTestSources" value="true" />
-    <profile name="sbt 1" modules="nexus,nexus.nexus-application,nexus.nexus-domain,nexus.nexus-infrastructure,nexus.nexus-presentation" />
-    <profile name="sbt 2" modules="nexus.main,nexus.nexus-application.main,nexus.nexus-application.test,nexus.nexus-domain.main,nexus.nexus-domain.test,nexus.nexus-infrastructure.main,nexus.nexus-infrastructure.test,nexus.nexus-presentation.main,nexus.nexus-presentation.test,nexus.test">
+    <profile name="sbt 1" modules="nexus,nexus.nexus,nexus.nexus-application,nexus.nexus-codegen,nexus.nexus-domain,nexus.nexus-infrastructure,nexus.nexus-migration,nexus.nexus-presentation,root,root.nexus,root.nexus-codegen,root.nexus-migration" />
+    <profile name="sbt 2" modules="nexus.nexus-application.main,nexus.nexus-application.test,nexus.nexus-domain.main,nexus.nexus-domain.test,nexus.nexus-infrastructure.main,nexus.nexus-infrastructure.test,nexus.nexus-presentation.main,nexus.nexus-presentation.test">
       <option name="deprecationWarnings" value="true" />
       <option name="uncheckedWarnings" value="true" />
       <option name="featureWarnings" value="true" />
       <parameters>
         <parameter value="-Xfatal-warnings" />
+      </parameters>
+    </profile>
+    <profile name="sbt 3" modules="root.main,root.nexus-codegen.main,root.nexus-codegen.test,root.nexus-migration.main,root.nexus-migration.test,root.nexus.main,root.nexus.test,root.test">
+      <option name="deprecationWarnings" value="true" />
+      <parameters>
+        <parameter value="-Ydebug" />
+        <parameter value="-Xmax-inlines:64" />
+        <parameter value="-Xmacro-settings:quill.macro.log=false" />
+      </parameters>
+    </profile>
+    <profile name="sbt 4" modules="nexus.main,nexus.nexus-codegen.main,nexus.nexus-codegen.test,nexus.nexus-migration.main,nexus.nexus-migration.test,nexus.nexus.main,nexus.nexus.test,nexus.test">
+      <option name="deprecationWarnings" value="true" />
+      <parameters>
+        <parameter value="-Ydebug" />
+        <parameter value="-Xmax-inlines:64" />
+        <parameter value="-Xmacro-settings:quill.macro.log=false" />
+        <parameter value="-Wconf:msg=_ is deprecated for wildcard:s" />
       </parameters>
     </profile>
   </component>

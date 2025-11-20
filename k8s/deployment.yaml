@@ -1,0 +1,118 @@
+# k8s/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nexus-api
+  namespace: production
+  labels:
+    app: nexus
+    component: api
+spec:
+  replicas: 3
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+
+  selector:
+    matchLabels:
+      app: nexus
+      component: api
+
+  template:
+    metadata:
+      labels:
+        app: nexus
+        component: api
+    spec:
+      # 确保迁移 Job 完成后才启动
+      initContainers:
+        - name: wait-for-migration
+          image: bitnami/kubectl:latest
+          command:
+            - /bin/bash
+            - -c
+            - |
+              echo "Waiting for migration job to complete..."
+              kubectl wait --for=condition=complete \
+                --timeout=600s \
+                job/nexus-db-migration \
+                -n production
+              echo "Migration completed successfully!"
+
+      containers:
+        - name: api
+          image: your-registry/nexus:latest
+          imagePullPolicy: IfNotPresent
+
+          # 运行主应用
+          command: ["java"]
+          args:
+            - "-jar"
+            - "app.jar"
+            - "server"
+
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+
+          env:
+            - name: POSTGRES_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: nexus-config
+                  key: POSTGRES_URL
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: nexus-db-secret
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: nexus-db-secret
+                  key: POSTGRES_PASSWORD
+            - name: TIMESCALE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: nexus-config
+                  key: TIMESCALE_URL
+            - name: TIMESCALE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: nexus-db-secret
+                  key: TIMESCALE_USER
+            - name: TIMESCALE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: nexus-db-secret
+                  key: TIMESCALE_PASSWORD
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "1000m"
+            limits:
+              memory: "2Gi"
+              cpu: "2000m"
