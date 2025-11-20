@@ -1,0 +1,422 @@
+syntax = "proto3";
+
+package neuro;
+
+import "common.proto";
+
+option java_package = "app.mosia.nexus.domain.grpc";
+option java_multiple_files = true;
+
+// Neuro Orchestrator Service - 核心编排器
+// 负责管理 Isaac Sim 实例池和 Training Instance 池
+service NeuroOrchestratorService {
+  // 创建会话（根据模式分配资源）
+  rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse);
+
+  // 创建训练会话（Training 模式）
+  rpc CreateTrainingSession(CreateTrainingSessionRequest) returns (CreateTrainingSessionResponse);
+
+  // 创建混合会话（Hybrid 模式）
+  rpc CreateHybridSession(CreateHybridSessionRequest) returns (CreateHybridSessionResponse);
+
+  // 启动仿真
+  rpc StartSimulation(StartSimulationRequest) returns (StartSimulationResponse);
+
+  // 停止会话并释放资源
+  rpc StopSession(StopSessionRequest) returns (StopSessionResponse);
+
+  // 保存会话快照
+  rpc SaveSessionSnapshot(SaveSessionSnapshotRequest) returns (SaveSessionSnapshotResponse);
+
+  // 恢复会话快照
+  rpc RestoreSessionSnapshot(RestoreSessionSnapshotRequest) returns (RestoreSessionSnapshotResponse);
+
+  // 获取 Omniverse 连接信息
+  rpc GetOmniverseConnectionInfo(GetOmniverseConnectionInfoRequest) returns (GetOmniverseConnectionInfoResponse);
+
+  // 获取会话状态
+  rpc GetSessionStatus(GetSessionStatusRequest) returns (SessionStatusResponse);
+
+  // 获取资源池状态
+  rpc GetResourcePoolStatus(ResourcePoolStatusRequest) returns (ResourcePoolStatusResponse);
+
+  // 健康检查
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+// ============================================================================
+// 会话模式枚举
+// ============================================================================
+enum SessionMode {
+  TRAINING = 0;  // AI 训练模式（Training Instance + Isaac Sim）
+  MANUAL = 1;    // 手动控制模式（仅 Isaac Sim + Frontend WebRTC）
+  HYBRID = 2;    // 混合模式（Training + Frontend 都可控制）
+}
+
+// ============================================================================
+// Manual 模式 - 创建会话请求
+// ============================================================================
+message CreateSessionRequest {
+  string session_id = 1;
+  SessionMode mode = 2;  // 必须是 MANUAL
+  common.GrpcSceneConfig scene_config = 3;
+  common.GrpcStreamConfig stream_config = 4;
+}
+
+message CreateSessionResponse {
+  bool success = 1;
+  string message = 2;
+  string session_id = 3;
+
+  // 分配的 Isaac Sim 实例信息
+  string instance_id = 4;  // e.g., "isaac-sim-1"
+
+  // WebSocket 和 WebRTC 端点（Manual 模式）
+  string control_ws_url = 5;        // e.g., "ws://isaac-sim-1:8766/control/session-123"
+  string webrtc_signaling_url = 6;  // e.g., "ws://nexus:8080/api/webrtc/signaling/isaac-sim/session-123"
+
+  // 会话状态
+  common.GrpcSessionStatus status = 7;
+
+  // 流媒体端点（如果需要 RTSP 等备选方案）
+  GrpcStreamEndpoint stream_endpoint = 8;
+
+  // Nucleus 路径（Omniverse 资产存储路径）
+  string nucleus_path = 9;  // e.g., "omniverse://nucleus-server/sessions/session-123" 或 "/sessions/session-123"
+}
+
+// ============================================================================
+// Training 模式 - 创建训练会话请求
+// ============================================================================
+message CreateTrainingSessionRequest {
+  string session_id = 1;
+  SessionMode mode = 2;  // 必须是 TRAINING
+
+  // 场景配置
+  common.GrpcSceneConfig scene_config = 3;
+
+  // 训练配置
+  GrpcTrainingConfig training_config = 4;
+
+  // 资源需求
+  GrpcResourceRequirements resource_requirements = 5;
+}
+
+message GrpcTrainingConfig {
+  enum Algorithm {
+    PPO = 0;
+    SAC = 1;
+    TD3 = 2;
+    DQN = 3;
+    A3C = 4;
+  }
+
+  Algorithm algorithm = 1;
+  int32 total_episodes = 2;
+  int32 parallel_envs = 3;  // 并行环境数量（需要相应数量的 Isaac Sim 实例）
+  map<string, string> hyperparameters = 4;
+}
+
+message GrpcResourceRequirements {
+  // Training Instance 资源需求
+  int32 training_gpus = 1;       // 训练 GPU 数量
+  int32 training_memory_gb = 2;  // 训练内存需求
+
+  // Isaac Sim 实例数量（并行环境数）
+  int32 isaac_sim_instances = 3;
+}
+
+message CreateTrainingSessionResponse {
+  bool success = 1;
+  string message = 2;
+  string session_id = 3;
+
+  // 分配的 Training Instance 信息
+  string training_instance_id = 4;  // e.g., "training-1"
+
+  // 分配的 Isaac Sim 实例 IDs（多个并行环境）
+  repeated string isaac_instance_ids = 5;  // e.g., ["isaac-sim-1", "isaac-sim-2", "isaac-sim-3"]
+
+  // 分配的training实例的cpu IDs（多个gpu参与）
+  repeated int32 allocated_gpu_ids = 6;
+
+  // ZMQ 通道端点（内部通信，Nexus 不需要使用）
+  repeated GrpcZmqChannelInfo zmq_channels = 7;
+
+  // 训练状态
+  GrpcTrainingStatus training_status = 8;
+
+  // 可选：调试模式的 WebSocket URL（如果启用）
+  string debug_ws_url = 9;
+}
+
+message GrpcZmqChannelInfo {
+  string isaac_instance_id = 1;
+  string zmq_endpoint = 2;  // e.g., "tcp://isaac-sim-1:5555"
+  string protocol = 3;      // "REQ-REP" or "PUB-SUB"
+}
+
+enum GrpcTrainingStatus {
+  INITIALIZING = 0;
+  RUNNING = 1;
+  PAUSED = 2;
+  COMPLETED = 3;
+  FAILED = 4;
+}
+
+// ============================================================================
+// Hybrid 模式 - 创建混合会话请求
+// ============================================================================
+message CreateHybridSessionRequest {
+  string session_id = 1;
+  SessionMode mode = 2;  // 必须是 HYBRID
+
+  common.GrpcSceneConfig scene_config = 3;
+  GrpcTrainingConfig training_config = 4;
+  GrpcResourceRequirements resource_requirements = 5;
+
+  // 是否启用人工演示模式
+  bool enable_human_demo = 6;
+}
+
+message CreateHybridSessionResponse {
+  bool success = 1;
+  string message = 2;
+  string session_id = 3;
+
+  // Training 资源
+  string training_instance_id = 4;
+  repeated string isaac_instance_ids = 5;
+
+  // WebRTC 端点（供 Frontend 连接）
+  string webrtc_signaling_url = 6;
+
+  // 控制模式切换 URL
+  string control_mode_switch_url = 7;  // 用于在 AI/Manual 模式间切换
+
+  GrpcTrainingStatus training_status = 8;
+}
+
+// ============================================================================
+// 启动/停止仿真
+// ============================================================================
+message StartSimulationRequest {
+  string session_id = 1;
+  bool real_time = 2;
+  double time_scale = 3;
+}
+
+message StartSimulationResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message StopSessionRequest {
+  string session_id = 1;
+  bool cleanup = 2;  // 是否清理资源
+}
+
+message StopSessionResponse {
+  bool success = 1;
+  string message = 2;
+  repeated string released_instances = 3;  // 释放的实例 IDs
+}
+
+// ============================================================================
+// 快照管理
+// ============================================================================
+message SaveSessionSnapshotRequest {
+  string session_id = 1;
+
+  // Omniverse Nucleus 基础路径（可选，如果不提供则使用默认路径）
+  // 例如: "omniverse://nucleus-server/sessions"
+  string nucleus_base_path = 2;
+
+  // 是否保存训练检查点（仅对 Training/Hybrid 模式有效）
+  bool save_checkpoint = 3;
+
+  // 自定义元数据（可选）
+  map<string, string> metadata = 4;
+}
+
+message SaveSessionSnapshotResponse {
+  bool success = 1;
+  string message = 2;
+
+  // 快照信息
+  GrpcSnapshotInfo snapshot_info = 3;
+}
+
+message RestoreSessionSnapshotRequest {
+  string session_id = 1;
+
+  // 要恢复的快照 ID 或路径
+  string snapshot_id = 2;
+
+  // 或者直接指定 Omniverse 路径
+  string nucleus_snapshot_path = 3;
+
+  // 是否恢复训练检查点
+  bool restore_checkpoint = 4;
+}
+
+message RestoreSessionSnapshotResponse {
+  bool success = 1;
+  string message = 2;
+
+  // 恢复后分配的新实例 IDs
+  repeated string isaac_instance_ids = 3;
+  string training_instance_id = 4;
+}
+
+message GrpcSnapshotInfo {
+  string snapshot_id = 1;           // 快照唯一 ID
+  string session_id = 2;            // 所属会话 ID
+
+  // Omniverse Nucleus 路径
+  repeated string scene_snapshot_urls = 3;  // Isaac Sim 场景快照（每个实例一个）
+  string checkpoint_url = 4;               // 训练检查点 URL（可选）
+
+  // 快照元数据
+  int64 created_at = 5;             // 创建时间戳
+  int64 file_size_bytes = 6;        // 总文件大小
+  map<string, string> metadata = 7; // 自定义元数据
+}
+
+// ============================================================================
+// Omniverse 连接信息
+// ============================================================================
+message GetOmniverseConnectionInfoRequest {
+  string session_id = 1;
+}
+
+message GetOmniverseConnectionInfoResponse {
+  bool success = 1;
+  string message = 2;
+
+  // Omniverse 连接信息
+  GrpcOmniverseConnectionInfo connection_info = 3;
+}
+
+message GrpcOmniverseConnectionInfo {
+  // 通过 Neuro 网关的 Nucleus URL (供 3D 工具直接连接)
+  string nucleus_url = 1;  // e.g., "omniverse://neuro-gateway-1.example.com/sessions/abc123"
+
+  // HTTP 反向代理 URL (供 Nexus 后端使用)
+  string http_proxy_url = 2;  // e.g., "https://neuro-gateway-1.example.com/omniverse/sessions/abc123"
+
+  // 会话路径
+  string session_path = 3;  // e.g., "/sessions/abc123"
+
+  // 快照路径（如果存在）
+  string snapshot_path = 4;  // e.g., "/sessions/abc123/snapshots/def456"
+
+  // 认证信息
+  string access_token = 5;
+  int64 token_expires_at = 6;  // Unix 时间戳
+}
+
+// ============================================================================
+// 会话状态查询
+// ============================================================================
+message GetSessionStatusRequest {
+  string session_id = 1;
+}
+
+message SessionStatusResponse {
+  string session_id = 1;
+  SessionMode mode = 2;
+  common.GrpcSessionStatus session_status = 3;
+
+  // Manual 模式特有
+  GrpcManualModeStatus manual_status = 4;
+
+  // Training 模式特有
+  GrpcTrainingModeStatus training_status = 5;
+}
+
+message GrpcManualModeStatus {
+  string instance_id = 1;
+  bool frontend_connected = 2;
+  int64 last_command_timestamp = 3;
+}
+
+message GrpcTrainingModeStatus {
+  string training_instance_id = 1;
+  repeated string isaac_instance_ids = 2;
+  int32 current_episode = 3;
+  int32 total_episodes = 4;
+  double average_reward = 5;
+  GrpcTrainingStatus status = 6;
+}
+
+// ============================================================================
+// 资源池状态
+// ============================================================================
+message ResourcePoolStatusRequest {
+  // 可选：过滤条件
+  bool include_isaac_pool = 1;
+  bool include_training_pool = 2;
+}
+
+message ResourcePoolStatusResponse {
+  GrpcIsaacSimPoolStatus isaac_pool = 1;
+  GrpcTrainingPoolStatus training_pool = 2;
+}
+
+message GrpcIsaacSimPoolStatus {
+  int32 total_instances = 1;
+  int32 idle_instances = 2;
+  int32 running_instances = 3;
+  repeated GrpcIsaacSimInstanceInfo instances = 4;
+}
+
+message GrpcIsaacSimInstanceInfo {
+  string instance_id = 1;
+  string gpu_id = 2;
+  string status = 3;  // "idle", "running", "error"
+  string paired_with = 4;  // Training Instance ID (如果已配对)
+  string session_id = 5;   // 当前服务的 session ID
+}
+
+message GrpcTrainingPoolStatus {
+  int32 total_instances = 1;
+  int32 idle_instances = 2;
+  int32 running_instances = 3;
+  repeated GrpcTrainingInstanceInfo instances = 4;
+}
+
+message GrpcTrainingInstanceInfo {
+  string instance_id = 1;
+  repeated string gpu_ids = 2;  // 多 GPU 训练
+  string status = 3;
+  string algorithm = 4;
+  int32 paired_isaac_count = 5;  // 配对的 Isaac Sim 实例数量
+  string session_id = 6;
+}
+
+// ============================================================================
+// 流媒体端点（备用）
+// ============================================================================
+message GrpcStreamEndpoint {
+  string protocol = 1;  // "webrtc", "rtsp", "raw"
+  string url = 2;
+  int32 port = 3;
+  map<string, string> metadata = 4;
+  int32 width = 5;
+  int32 height = 6;
+}
+
+// ============================================================================
+// 健康检查
+// ============================================================================
+message HealthCheckRequest {
+  bool detailed = 1;
+}
+
+message HealthCheckResponse {
+  bool healthy = 1;
+  string version = 2;
+  int32 active_sessions = 3;
+  ResourcePoolStatusResponse resource_status = 4;
+}

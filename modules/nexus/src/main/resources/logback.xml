@@ -1,0 +1,26 @@
+<configuration>
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>[%highlight(%-5level)] %cyan(%d{HH:mm:ss.SSS}) [%thread] %green(%logger{36}) - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- 降低 HikariCP、Netty 噪声 -->
+    <logger name="caliban" level="WARN"/>
+    <logger name="com.zaxxer.hikari" level="WARN" />
+    <logger name="io.netty" level="WARN" />
+    <logger name="org.postgresql" level="DEBUG" />
+    <logger name="io.getquill" level="DEBUG"/>
+    <!-- 降低 Kafka 日志级别 -->
+    <logger name="org.apache.kafka" level="WARN"/>
+    <logger name="org.apache.kafka.clients" level="WARN"/>
+    <logger name="org.apache.kafka.common.network" level="ERROR"/>
+    <logger name="org.apache.kafka.common.utils" level="ERROR"/>
+    <!-- 你也可以根据需要加上 zio 或 graphql 相关包名 -->
+    <logger name="dev.zio" level="DEBUG"/>
+    <!-- <logger name="app.mosia" level="DEBUG"/> -->
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE" />
+    </root>
+</configuration>

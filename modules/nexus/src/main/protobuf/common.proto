@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package common;
+
+option java_package = "app.mosia.nexus.domain.grpc";
+option java_multiple_files = true;
+
+// An empty message type
+message Empty {}
+
+// Represents a 3D position
+message GrpcPosition {
+  double x = 1;
+  double y = 2;
+  double z = 3;
+}
+
+// Represents a rotation using a quaternion
+message GrpcRotation {
+  double w = 1;
+  double x = 2;
+  double y = 3;
+  double z = 4;
+}
+
+// Represents a physical obstacle in the scene
+message GrpcObstacle {
+  enum Type {
+    BOX = 0;
+    SPHERE = 1;
+    CYLINDER = 2;
+    MESH = 3;
+  }
+
+  Type type = 1;
+  GrpcPosition position = 2;
+  GrpcRotation rotation = 3;
+  repeated double size = 4;  // e.g., [width, height, depth] or [radius]
+  string mesh_path = 5;      // Path for MESH type
+}
+
+// Configuration for a simulation scene
+message GrpcSceneConfig {
+  string robot_urdf = 1;
+  repeated GrpcObstacle obstacles = 2;
+  GrpcPosition start_position = 3;
+  GrpcRotation start_rotation = 4;
+  string environment = 5;
+  bool enable_shadows = 6;
+  bool enable_physics = 7;
+}
+
+// Configuration for video streaming
+message GrpcStreamConfig {
+  int32 width = 1;
+  int32 height = 2;
+  int32 fps = 3;
+  string codec = 4;       // "h264", "vp8", "vp9"
+  int32 bitrate = 5;      // kbps
+  string transport = 6;   // "webrtc", "rtsp", "raw"
+}
+
+// Detailed status of a simulation session
+message GrpcSessionStatus {
+  enum Status {
+    INITIALIZING = 0;
+    READY = 1;
+    RUNNING = 2;
+    PAUSED = 3;
+    STOPPED = 4;
+    ERROR = 5;
+  }
+
+  Status status = 1;
+  double fps = 2;
+  int64 frame_count = 3;
+  double simulation_time = 4;
+  string error_message = 5;
+  float gpu_utilization = 6;
+  int64 gpu_memory_mb = 7;
+  float cpu_utilization = 8;
+  int64 created_at_timestamp = 9;
+}

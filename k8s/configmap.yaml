@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nexus-config
+  namespace: production
+data:
+  POSTGRES_URL: "jdbc:postgresql://postgres-service:5432/nexus"
+  TIMESCALE_URL: "jdbc:postgresql://timescaledb-service:5432/nexus-ts"

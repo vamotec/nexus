@@ -8,10 +8,9 @@
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
-            <option value="$PROJECT_DIR$/modules/application" />
-            <option value="$PROJECT_DIR$/modules/domain" />
-            <option value="$PROJECT_DIR$/modules/infrastructure" />
-            <option value="$PROJECT_DIR$/modules/presentation" />
+            <option value="$PROJECT_DIR$/modules/codegen" />
+            <option value="$PROJECT_DIR$/modules/migration" />
+            <option value="$PROJECT_DIR$/modules/nexus" />
             <option value="$PROJECT_DIR$/project" />
           </set>
         </option>

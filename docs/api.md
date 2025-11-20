@@ -16,6 +16,16 @@ POST   /api/auth/reset-password        # 重置密码
 POST   /api/oauth/login                # oauth登录
 POST   /api/oauth/callback/:provider   # oauth回调
 
+  # --------------- 用户相关 ---------------
+  "获取当前用户信息"
+  me: User!
+
+  "获取当前用户统计数据"
+  myStatistics: UserStatistics!
+
+  "获取当前用户配额使用情况"
+  myQuota: QuotaUsage!
+  
 # 用户简单接口
 POST   /api/users                      # 新建用户
 GET    /api/me                         # 获取用户信息

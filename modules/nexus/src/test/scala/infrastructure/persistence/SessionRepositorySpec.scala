@@ -1,0 +1,3 @@
+package infrastructure.persistence
+
+class SessionRepositorySpec
