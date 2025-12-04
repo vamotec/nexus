@@ -2,7 +2,12 @@ package app.mosia.nexus
 package presentation.graphql.schema
 
 import application.dto.request.session.CreateSessionRequest
-import application.dto.response.session.{RobotPositionUpdate, SessionMetricsResponse, SessionResponse, SessionResultResponse}
+import application.dto.response.session.{
+  RobotPositionUpdate,
+  SessionMetricsResponse,
+  SessionResponse,
+  SessionResultResponse
+}
 import domain.error.CalTask
 import domain.model.metrics.SimSessionMetrics
 import domain.model.session.{SessionId, SessionStatus}

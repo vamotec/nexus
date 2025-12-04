@@ -35,18 +35,18 @@ object MigrationRunner extends ZIOAppDefault:
     }
 
   private def showPendingMigrations(
-                                     service: FlywayMigration,
-                                     dbType: DatabaseType
-                                   ): Task[List[org.flywaydb.core.api.MigrationInfo]] =
+    service: FlywayMigration,
+    dbType: DatabaseType
+  ): Task[List[org.flywaydb.core.api.MigrationInfo]] =
     for
       _ <- printLine(s"\n📋 Checking $dbType migrations...").orDie
       allInfo <- service.info(dbType)
       pending = allInfo.filter(_.getState.name() == "PENDING")
       _ <-
-      if pending.isEmpty then printLine(s"  ✅ No pending migrations for $dbType").orDie
-      else
-        printLine(s"  ⚠️  Found ${pending.length} pending migrations:").orDie *>
-          printMigrationInfo(pending)
+        if pending.isEmpty then printLine(s"  ✅ No pending migrations for $dbType").orDie
+        else
+          printLine(s"  ⚠️  Found ${pending.length} pending migrations:").orDie *>
+            printMigrationInfo(pending)
     yield pending
 
   private def confirmMigration(totalPending: Int): Task[Boolean] =
@@ -59,23 +59,22 @@ object MigrationRunner extends ZIOAppDefault:
       yield input.toLowerCase == "yes"
 
   private def executeMigration(
-                                service: FlywayMigration,
-                                dbType: DatabaseType
-                              ): Task[MigrationResult] =
+    service: FlywayMigration,
+    dbType: DatabaseType
+  ): Task[MigrationResult] =
     for
       _ <- printLine(s"\n🚀 Migrating $dbType...").orDie
       result <- service.migrate(dbType)
       _ <-
-      if result.success then
-        printLine(s"  ✅ $dbType: Applied ${result.migrationsExecuted} migrations → ${result.targetVersion}").orDie
-      else printLine(s"  ❌ $dbType: Migration failed!").orDie
+        if result.success then
+          printLine(s"  ✅ $dbType: Applied ${result.migrationsExecuted} migrations → ${result.targetVersion}").orDie
+        else printLine(s"  ❌ $dbType: Migration failed!").orDie
     yield result
 
   private def validateMigrations(service: FlywayMigration): Task[Unit] =
     for
       _ <- printLine("\n🔍 Validating migrations...").orDie
       _ <- service.validate(DatabaseType.Postgres)
-      _ <- service.validate(DatabaseType.Timescale)
       _ <- printLine("  ✅ All migrations validated successfully").orDie
     yield ()
 
@@ -92,31 +91,28 @@ object MigrationRunner extends ZIOAppDefault:
       }
       // 显示待执行的迁移
       postgresPending <- showPendingMigrations(service, DatabaseType.Postgres)
-      timescalePending <- showPendingMigrations(service, DatabaseType.Timescale)
-      totalPending = postgresPending.length + timescalePending.length
+      totalPending = postgresPending.length
       // 确认执行
       confirmed <- confirmMigration(totalPending)
       exitCode <-
-      if !confirmed then printLine("\n❌ Migration cancelled by user").orDie.as(ExitCode.failure)
-      else if totalPending == 0 then
-        printLine("\n✅ Database is up to date. No migrations needed.").orDie.as(ExitCode.success)
-      else
-        // 执行迁移
-        for
-          pgResult <- executeMigration(service, DatabaseType.Postgres)
-          tsResult <- executeMigration(service, DatabaseType.Timescale)
-          // 验证结果
-          _ <- validateMigrations(service)
-          _ <- printLine(s"""
+        if !confirmed then printLine("\n❌ Migration cancelled by user").orDie.as(ExitCode.failure)
+        else if totalPending == 0 then
+          printLine("\n✅ Database is up to date. No migrations needed.").orDie.as(ExitCode.success)
+        else
+          // 执行迁移
+          for
+            pgResult <- executeMigration(service, DatabaseType.Postgres)
+            _ <- validateMigrations(service)
+            _ <- printLine(s"""
                             |
                             |╔═══════════════════════════════════════╗
                             |║      Migration Completed              ║
                             |╠═══════════════════════════════════════╣
                             |║  PostgreSQL: ${pgResult.migrationsExecuted} migrations         ║
-                            |║  TimescaleDB: ${tsResult.migrationsExecuted} migrations        ║
+                            |║                                       ║
                             |╚═══════════════════════════════════════╝
                     """.stripMargin).orDie
-        yield ExitCode.success
+          yield ExitCode.success
     yield exitCode
 
   override def run: ZIO[Any, Any, ExitCode] =

@@ -62,3 +62,14 @@ object ValidationError:
     val message =
       s"$entityType references non-existent $referencedType '$referencedId' in field '$field'"
     val errorCode = "INVALID_REFERENCE"
+
+  case class SerializationError(
+    field: String,
+    value: Option[String] = None,
+    cause: Option[Throwable] = None,
+    context: Map[String, String] = Map.empty
+  ) extends ValidationError:
+    val message: String = value match
+      case Some(v) => s"Failed to serialize '$v' for field '$field':"
+      case None => s"Failed to serialize '$field':"
+    val errorCode = "SERIALIZATION_ERROR"

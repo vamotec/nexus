@@ -20,13 +20,15 @@ object CodegenRunner extends ZIOAppDefault:
   override val bootstrap: ZLayer[ZIOAppArgs, Any, Unit] =
     Runtime.removeDefaultLoggers >>> consoleLogger() ++ SLF4J.slf4j ++
       ZLayer.fromZIO {
-        ZIO.attempt {
+        ZIO
+          .attempt {
             Dotenv
               .configure()
               .ignoreIfMissing()
               .systemProperties()
               .load()
-          }.tapError(e => ZIO.logError(s"Failed to load .env file: ${e.getMessage}"))
+          }
+          .tapError(e => ZIO.logError(s"Failed to load .env file: ${e.getMessage}"))
           .orDie
       }.unit
 
@@ -35,12 +37,13 @@ object CodegenRunner extends ZIOAppDefault:
   // ============================================
 
   private def printBanner: UIO[Unit] =
-    Console.printLine(
-      """
+    Console
+      .printLine("""
         |╔═══════════════════════════════════════╗
         |║   Nexus Code Generation Tool        ║
         |╚═══════════════════════════════════════╝
-    """.stripMargin).orDie
+    """.stripMargin)
+      .orDie
 
   // ============================================
   // Code Generation Logic
@@ -68,7 +71,7 @@ object CodegenRunner extends ZIOAppDefault:
         .mkString("")
   }
 
-  private def mapColumnType(dbType: String, nullable: Boolean): String = 
+  private def mapColumnType(dbType: String, nullable: Boolean): String =
     val normalizedType = dbType match
       case "java.sql.Timestamp" => "java.time.Instant"
       case "java.sql.Blob" => "io.getquill.JsonbValue[zio.json.ast.Json]"
@@ -78,13 +81,13 @@ object CodegenRunner extends ZIOAppDefault:
     if (nullable) s"Option[$normalizedType]" else normalizedType
 
   private def generateCode(table: slick.model.Table, pkg: String): String = {
-    val tableName = table.name.table
+    val tableName          = table.name.table
     val processedTableName = processTableName(tableName)
 
     val fields = table.columns
       .map { column =>
         val processedColumnName = processColumnName(column.name)
-        val columnType = mapColumnType(column.tpe, column.nullable)
+        val columnType          = mapColumnType(column.tpe, column.nullable)
         s"  $processedColumnName: $columnType"
       }
       .mkString(",\n")
@@ -102,14 +105,14 @@ object CodegenRunner extends ZIOAppDefault:
   // ============================================
   // Database Introspection & File Generation
   // ============================================
-  
+
   private def generateForDatabaseZIO(
-                                      jdbcUrl: String,
-                                      user: String,
-                                      password: String,
-                                      outputDir: String,
-                                      packageName: String
-                                    ): Task[Unit] =
+    jdbcUrl: String,
+    user: String,
+    password: String,
+    outputDir: String,
+    packageName: String
+  ): Task[Unit] =
     ZIO.scoped {
       for
         db <- ZIO.acquireRelease(
@@ -156,12 +159,12 @@ object CodegenRunner extends ZIOAppDefault:
     }
 
   private def generateForDatabase(
-                                   jdbcUrl: String,
-                                   user: String,
-                                   password: String,
-                                   outputDir: String,
-                                   packageName: String
-                                 ): Task[Int] =
+    jdbcUrl: String,
+    user: String,
+    password: String,
+    outputDir: String,
+    packageName: String
+  ): Task[Int] =
     ZIO.scoped {
       for
         _ <- ZIO.logInfo(s"Connecting to database: $jdbcUrl")
@@ -183,7 +186,7 @@ object CodegenRunner extends ZIOAppDefault:
           .fromFuture { implicit ec =>
             for {
               mTables <- db.run(MTable.getTables(None, None, None, Some(Seq("TABLE"))))
-              _ = println(s"Found ${mTables.length} tables")
+              _            = println(s"Found ${mTables.length} tables")
               modelBuilder = new CustomPostgresModelBuilder(mTables, ignoreInvalidDefaults = true)
               model <- db.run(modelBuilder.buildModel)
             } yield model
@@ -194,21 +197,22 @@ object CodegenRunner extends ZIOAppDefault:
         _ <- ZIO.logInfo(s"Found $tableCount tables to generate")
 
         _ <- ZIO.foreach(model.tables) { table =>
-          ZIO.attempt {
-              val tableName = table.name.table
+          ZIO
+            .attempt {
+              val tableName          = table.name.table
               val processedTableName = processTableName(tableName)
-              val fileName = s"${processedTableName}Row.scala"
-              val content = generateCode(table, packageName)
-              val generator = new SourceCodeGenerator(model)
+              val fileName           = s"${processedTableName}Row.scala"
+              val content            = generateCode(table, packageName)
+              val generator          = new SourceCodeGenerator(model)
 
               generator.writeStringToFile(content, outputDir, packageName, fileName)
 
               fileName
-            }.tap(fileName => ZIO.logDebug(s"Generated: $fileName"))
+            }
+            .tap(fileName => ZIO.logDebug(s"Generated: $fileName"))
         }
 
         _ <- ZIO.logInfo(s"✅ Successfully generated $tableCount model files")
-
       yield tableCount
     }
 
@@ -218,20 +222,20 @@ object CodegenRunner extends ZIOAppDefault:
 
   private def generateQuillModels(config: DatabaseConfig): Task[Unit] =
     val projectRoot = Paths.get("").toAbsolutePath.toString
-    val outputDir = s"$projectRoot/modules/nexus/target/scala-3.7.4/src_managed/main"
-    val outputPath = Paths.get(outputDir)
+    val outputDir   = s"$projectRoot/modules/nexus/target/scala-3.7.4/src_managed/main"
+    val outputPath  = Paths.get(outputDir)
 
     for
       _ <- ZIO.logInfo("Starting Quill model generation...")
       _ <- ZIO.logDebug(s"Output directory: $outputDir")
-      _ <- ZIO.logDebug(s"Package: infrastructure.persistence.postgres.generated")
+      _ <- ZIO.logDebug(s"Package: infrastructure.persistence.rows")
 
       count <- generateForDatabase(
         jdbcUrl = config.url,
         user = config.user,
         password = config.password,
         outputDir = outputDir,
-        packageName = "infrastructure.persistence.postgres.rows"
+        packageName = "infrastructure.persistence.rows"
       )
 
       _ <- ZIO.logInfo(s"✅ Code generation completed! Generated $count files.")
@@ -251,13 +255,13 @@ object CodegenRunner extends ZIOAppDefault:
 
       _ <- generateQuillModels(config)
 
-      _ <- Console.printLine(
-        """
+      _ <- Console
+        .printLine("""
           |╔═══════════════════════════════════════╗
           |║   Code Generation Completed ✓       ║
           |╚═══════════════════════════════════════╝
-      """.stripMargin).orDie
-
+      """.stripMargin)
+        .orDie
     yield ExitCode.success
 
   // ============================================

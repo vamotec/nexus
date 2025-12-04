@@ -36,7 +36,7 @@ object QueryParser:
   def parseOptionalJson(input: Option[String]): Either[String, Option[Json]] =
     import zio.json._
     import zio.json.ast.Json
-  
+
     input match {
       case Some(jsonStr) if jsonStr.nonEmpty =>
         jsonStr.fromJson[Json] match {

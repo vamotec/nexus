@@ -1,19 +1,16 @@
 package app.mosia.nexus
 package presentation.graphql
 
-import domain.services.infra.JwtContent
 import domain.services.app.*
+import domain.services.infra.JwtContent
 import presentation.graphql.resolver.{ProjectResolver, SessionResolver, SimulationResolver, TrainingResolver}
 import presentation.graphql.schema.*
 
-import caliban.{CalibanError, GraphiQLHandler, RootResolver, graphQL}
-import caliban.schema.{ArgBuilder, Schema as Cs}
 import caliban.quick.*
-import sttp.tapir.Schema
-import zio.json.*
+import caliban.schema.Schema as Cs
+import caliban.{CalibanError, GraphiQLHandler, RootResolver, graphQL}
 import zio.*
 import zio.http.*
-import zio.json.ast.Json
 
 object GraphQLApi:
   private final case class Queries(

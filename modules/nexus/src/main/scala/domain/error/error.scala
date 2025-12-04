@@ -8,13 +8,14 @@ package object error:
   // 统一导出所有错误类型
   export AppError.*
   export AuthenticationError.*
-  export AuthorizationError.*
+  export AuthorizationError.PermissionDenied
+  export AuthorizationError.InsufficientPermissions
   export ClientError.*
-  export ConflictError.*
-  export DatabaseError.*
+  export ConflictError.{ConcurrentModification, DuplicateEntity, StateConflict, AlreadyExists}
+  export DatabaseError.{General, ConnectionError, QueryTimeout, Deadlock}
   export ExternalServiceError.*
-  export InternalError.*
-  export ValidationError.*
+  export InternalError.{UnexpectedError, ConfigurationError, InvalidSystemState, ResourceExhausted}
+  export ValidationError.{InvalidInput, MissingRequiredField, InvalidFieldValue, BusinessRuleViolation, InvalidReference, SerializationError}
 
   // 导出工具类
 //  export ErrorResponse.*

@@ -15,10 +15,11 @@ object AuthenticationError:
     val errorCode = "UNAUTHENTICATED"
 
   case class InvalidCredentials(
+    field: String,
     cause: Option[Throwable] = None,
     context: Map[String, String] = Map.empty
   ) extends AuthenticationError:
-    val message   = "Invalid credentials"
+    val message   = s"Invalid credentials for $field"
     val errorCode = "INVALID_CREDENTIALS"
 
   case class InvalidChallenge(

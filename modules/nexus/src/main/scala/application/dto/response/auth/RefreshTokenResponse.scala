@@ -7,10 +7,11 @@ import zio.json.*
 import zio.*
 import zio.json.ast.Json
 
+@jsonMemberNames(SnakeCase)
 case class RefreshTokenResponse(
-  @jsonField("access_token") accessToken: String,
-  @jsonField("refresh_token") refreshToken: String,
-  @jsonField("token_type") tokenType: String = "Bearer",
-  @jsonField("expires_in") expiresIn: Long
+  accessToken: String,
+  refreshToken: String,
+  tokenType: String = "Bearer",
+  expiresIn: Long
 ) derives JsonCodec,
       Schema

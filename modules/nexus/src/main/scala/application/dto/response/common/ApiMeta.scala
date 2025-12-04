@@ -10,6 +10,6 @@ import zio.json.ast.Json
 case class ApiMeta(
   total: Option[Long] = None,
   page: Option[Int] = None,
-  pageSize: Option[Int] = None
+  @jsonField("page_size") pageSize: Option[Int] = None
 ) derives JsonCodec,
       Schema

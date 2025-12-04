@@ -1,7 +1,7 @@
 package app.mosia.nexus
 package domain.model.grpc
 
-import domain.config.neuro.GeoLocation
+import domain.config.cloud.GeoLocation
 
 import zio.json.*
 import zio.*

@@ -13,10 +13,12 @@
     </profile>
     <profile name="sbt 3" modules="root.main,root.nexus-codegen.main,root.nexus-codegen.test,root.nexus-migration.main,root.nexus-migration.test,root.nexus.main,root.nexus.test,root.test">
       <option name="deprecationWarnings" value="true" />
+      <option name="uncheckedWarnings" value="true" />
+      <option name="featureWarnings" value="true" />
       <parameters>
-        <parameter value="-Ydebug" />
-        <parameter value="-Xmax-inlines:64" />
-        <parameter value="-Xmacro-settings:quill.macro.log=false" />
+        <parameter value="-encoding" />
+        <parameter value="UTF-8" />
+        <parameter value="-Wconf:src=src_managed/.*:silent" />
       </parameters>
     </profile>
     <profile name="sbt 4" modules="nexus.main,nexus.nexus-codegen.main,nexus.nexus-codegen.test,nexus.nexus-migration.main,nexus.nexus-migration.test,nexus.nexus.main,nexus.nexus.test,nexus.test">

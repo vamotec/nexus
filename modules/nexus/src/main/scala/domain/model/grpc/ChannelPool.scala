@@ -1,14 +1,12 @@
 package app.mosia.nexus
 package domain.model.grpc
 
-import domain.config.neuro.ClustersConfig
+import domain.config.cloud.ClustersConfig
+
+import io.grpc.{ManagedChannel, ManagedChannelBuilder}
+import zio.*
 
 import java.util.concurrent.atomic.{AtomicInteger, AtomicReferenceArray}
-import io.grpc.{ManagedChannel, ManagedChannelBuilder}
-
-import zio.json.*
-import zio.*
-import zio.json.ast.Json
 
 final case class ChannelPool(
   channels: AtomicReferenceArray[ManagedChannel],
@@ -21,13 +19,17 @@ final case class ChannelPool(
     channels.get(idx)
 
 object ChannelPool:
-  def make(clusterCfg: ClustersConfig): ZIO[Scope, Throwable, ChannelPool] =
+  def make(clusterCfg: ClustersConfig, target: ClusterTarget): ZIO[Scope, Throwable, ChannelPool] =
+    val conn = target match
+      case ClusterTarget.Neuro => clusterCfg.grpc.connection.neuro
+      case ClusterTarget.Nebula => clusterCfg.grpc.connection.nebula
+
     val n = if clusterCfg.grpc.poolSize > 0 then clusterCfg.grpc.poolSize else 4
 
     ZIO
       .foreach(0 until n) { i =>
         val builder = ManagedChannelBuilder
-          .forAddress(clusterCfg.grpc.connection.endpoint.host, clusterCfg.grpc.connection.endpoint.port)
+          .forAddress(conn.host, conn.port)
 
         createManagedChannel(builder, clusterCfg)
       }
@@ -71,6 +73,10 @@ object ChannelPool:
         builder.build()
       }
     } { channel =>
-      ZIO.attempt(channel.shutdown()).ignore *>
-        ZIO.attempt(channel.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)).ignore
+      // 确保 release 返回 ZIO[Scope, Nothing, Any]
+      (ZIO.attempt(channel.shutdown()) *>
+        ZIO.attemptBlocking(
+          channel.awaitTermination(500, java.util.concurrent.TimeUnit.MILLISECONDS)
+        ).timeout(1.seconds))
+        .ignore // 吞掉所有错误，满足 Nothing 错误类型要求
     }

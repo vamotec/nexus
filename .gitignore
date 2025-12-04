@@ -1,21 +1,13 @@
 target/
 project/target/
 project/project/
-backup
-docs
-k8s
-monitoring
-scripts
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
 
 ### IntelliJ IDEA ###
-.idea/modules.xml
-.idea/jarRepositories.xml
-.idea/compiler.xml
-.idea/libraries/
-.idea
+.idea/*
+.idea/
 *.iws
 *.iml
 *.ipr

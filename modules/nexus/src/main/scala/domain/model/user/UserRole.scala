@@ -1,16 +1,11 @@
 package app.mosia.nexus
 package domain.model.user
 
-import domain.error.*
 import domain.model.common.ValueObject
 
-import io.getquill.MappedEncoding
-import scala.util.Try
-import caliban.schema.{ArgBuilder, Schema as Cs}
-import sttp.tapir.Schema
-import zio.json.*
+import app.mosia.nexus.domain.model.jwt.Permission
 import zio.*
-import zio.json.ast.Json
+import zio.json.*
 
 enum UserRole extends ValueObject derives JsonCodec:
   case Admin, Developer, Viewer
@@ -22,7 +17,12 @@ object UserRole:
     case "viewer" => UserRole.Viewer
     case _ => throw new IllegalArgumentException(s"Unknown user role: $s")
 
-  def toString(userRole: UserRole): String = userRole match
-    case UserRole.Admin => "box"
-    case UserRole.Developer => "sphere"
-    case UserRole.Viewer => "cylinder"
+  def toRoleStr(userRole: UserRole): String = userRole match
+    case UserRole.Admin => "admin"
+    case UserRole.Developer => "developer"
+    case UserRole.Viewer => "viewer"
+
+  def toPermission(userRole: UserRole): Permission = userRole match
+    case UserRole.Admin => Permission.Admin
+    case UserRole.Developer => Permission.Editor
+    case UserRole.Viewer => Permission.Viewer

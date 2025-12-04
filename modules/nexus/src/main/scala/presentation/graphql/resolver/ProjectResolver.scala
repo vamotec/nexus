@@ -35,9 +35,11 @@ object ProjectResolver:
     // 根据 ID 查询单个项目
     project = projectId =>
       (for
-        payload <- jwtContent.get.someOrFail(InvalidInput("access token", "Invalid payload"))
-        userId <- UserId.fromString(payload.userIdStr)
+        userIdStr <- jwtContent.get.someOrFail(InvalidInput("access token", "Invalid payload"))
+        userId <- UserId.fromString(userIdStr)
+        
         projectId <- ProjectId.fromString(projectId)
+        
         // 1. 获取项目基本信息
         project <- projectService.getProject(projectId, userId)
 
@@ -67,8 +69,8 @@ object ProjectResolver:
     // 查询当前用户的所有项目
     myProjects = includeArchived =>
       (for
-        payload <- jwtContent.get.someOrFail(InvalidInput("access token", "Invalid payload"))
-        userId <- UserId.fromString(payload.userIdStr)
+        userIdStr <- jwtContent.get.someOrFail(InvalidInput("access token", "Invalid payload"))
+        userId <- UserId.fromString(userIdStr)
         // 1. 查询用户的所有项目
         projects <- projectService.getUserProjects(userId)
 
@@ -108,8 +110,8 @@ object ProjectResolver:
     // 创建项目
     createProject = request =>
       (for
-        payload <- jwtContent.get.someOrFail(InvalidInput("access token", "Invalid payload"))
-        userId <- UserId.fromString(payload.userIdStr)
+        userIdStr <- jwtContent.get.someOrFail(InvalidInput("access token", "Invalid payload"))
+        userId <- UserId.fromString(userIdStr)
         // 1. 创建项目
         project <- projectService.createProject(
           name = request.name,
@@ -134,8 +136,9 @@ object ProjectResolver:
     // 更新项目
     updateProject = args =>
       (for
-        payload <- jwtContent.get.someOrFail(InvalidInput("access token", "Invalid payload"))
-        userId <- UserId.fromString(payload.userIdStr)
+        userIdStr <- jwtContent.get.someOrFail(InvalidInput("access token", "Invalid payload"))
+        userId <- UserId.fromString(userIdStr)
+        
         projectId <- ProjectId.fromString(args.projectId)
         // 1. 获取现有项目
         project <- projectService.getProject(projectId, userId)
@@ -172,14 +175,14 @@ object ProjectResolver:
     // 删除项目
     deleteProject = projectId =>
       (for
-        payload <- jwtContent.get.someOrFail(InvalidInput("access token", "Invalid payload"))
-        userId <- UserId.fromString(payload.userIdStr)
+        userIdStr <- jwtContent.get.someOrFail(InvalidInput("access token", "Invalid payload"))
+        userId <- UserId.fromString(userIdStr)
         projectId <- ProjectId.fromString(projectId)
         // 1. 验证项目存在且用户有权限
         _ <- projectService.getProject(projectId, userId)
 
         // 2. TODO: 删除项目（需要在 ProjectService 添加 deleteProject 方法）
-        // result <- projectService.deleteProject(args.projectId, args.userId)
+        // result <- projectService.deleteProject(args.projectId, args.sub)
 
         // 暂时返回成功
         result = true

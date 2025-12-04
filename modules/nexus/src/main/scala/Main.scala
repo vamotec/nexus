@@ -1,38 +1,40 @@
 package app.mosia.nexus
 
-import infrastructure.geoip.*
-import infrastructure.jwt.JwtServiceLive
-import infrastructure.messaging.{DomainEventPublisherLive, KafkaProducerServiceLive}
-import infrastructure.monitoring.{HealthCheckServiceLive, PrometheusExporterLive, SystemMetricsCollectorLive}
-import infrastructure.neuro.*
-import infrastructure.persistence.BaseSource
-import infrastructure.persistence.postgres.repository.*
-import infrastructure.persistence.timescale.repository.{SessionMetricsRepositoryLive, TimescaleDbContext}
-import infrastructure.redis.RedisServiceLive
-import infrastructure.resource.ResourceAllocationServiceLive
 import application.services.*
 import domain.config.{AppConfig, HttpConfig}
 import domain.services.app.*
 import domain.services.infra.*
+import infrastructure.cloud.*
+import infrastructure.geoip.*
+import infrastructure.jwt.JwtServiceLive
+import infrastructure.messaging.HybridEventPublisher
+import infrastructure.messaging.consumer.*
+import infrastructure.monitoring.*
+import infrastructure.notification.{AliyunSmsService, SmtpEmailService}
+import infrastructure.persistence.*
+import infrastructure.rabbitmq.RabbitMQServiceLive
+import infrastructure.redis.LettuceRedis
+import infrastructure.resource.ResourceAllocationServiceLive
+import infrastructure.verification.VerificationCodeServiceLive
 import presentation.Middleware
 import presentation.graphql.GraphQLApi
 import presentation.http.RESTApi
+import presentation.websocket.WsRoutes
 
 import io.github.cdimascio.dotenv.Dotenv
-import zio.*
 import zio.config.magnolia.deriveConfig
 import zio.config.typesafe.TypesafeConfigProvider
 import zio.http.*
 import zio.http.Middleware.cors
 import zio.logging.backend.SLF4J
 import zio.metrics.connectors.prometheus.*
+import zio.{Scope, URIO, ZIO, ZIOAppArgs, ZIOAppDefault, ZLayer, durationInt, Runtime as ZioRuntime}
 
 object Main extends ZIOAppDefault:
   // 在 bootstrap 中加载 .env
   override val bootstrap: ZLayer[ZIOAppArgs, Any, Unit] =
     ZLayer.fromZIO {
       for {
-        // 1. 先加载环境变量
         _ <- ZIO.attempt {
           Dotenv
             .configure()
@@ -40,38 +42,56 @@ object Main extends ZIOAppDefault:
             .systemProperties()
             .load()
         }.orDie
-        // 2. 可选：验证关键环境变量
-        _ <- ZIO.logInfo("Environment variables loaded")
       } yield ()
-    } ++ (Runtime.removeDefaultLoggers ++ SLF4J.slf4j)
+    } ++ (ZioRuntime.removeDefaultLoggers ++ SLF4J.slf4j)
 
-  val app: URIO[
-    AppConfig & JwtContent & ProjectService & SimulationService & SessionService & TrainingService & UserService &
-      AuditService & DeviceService & OAuth2Service & AuthService & SessionService & SignalingService &
-      HealthCheckService & PrometheusExporter,
-    Routes[JwtService & JwtContent & JwtService & SignalingService & HealthCheckService & PrometheusExporter, Response]
-  ] =
-    (for
-      appConfig <- ZIO.service[AppConfig]
-      public <- RESTApi.makePublic
+  def app(config: AppConfig): URIO[JwtContent & ProjectService & SimulationService & SessionService &
+    TrainingService & UserService & SignalingService & SessionService & UserService & OrganizationService &
+    PrometheusExporter & HealthCheckService & SessionService & AuditService & DeviceService & UserService &
+    OAuth2Service & AuthService & NotificationService, Routes[JwtService & JwtContent & SignalingService &
+    JwtService, Response]] =
+    for
+      public <- RESTApi.makePublic(config)
       secure <- RESTApi.makeSecure
-      grapql <- GraphQLApi.make
-
+      ws      = WsRoutes.routes
+//      grapql <- GraphQLApi.make 放弃开发graphql，专注REST API开发
       // 业务路由（需要认证和CORS）
-      business = (secure ++ grapql) @@ cors(Middleware.corsConfig(appConfig)) @@ Middleware.auth
-
+      httpRoute = ws @@ cors(Middleware.corsConfig(config))
+      business = (secure ++ httpRoute) @@ Middleware.auth
       // 合并所有路由
       combine = public ++ business
-    yield combine).orDie
+    yield combine
 
   override def run: ZIO[ZIOAppArgs & Scope, Any, Any] =
     (for {
-      routes <- app
+      _ <- ZIO.succeed(println("\n=== RUN START ==="))
       appConfig <- ZIO.service[AppConfig]
-
+      routes <- app(appConfig)
       // 启动系统指标收集
       metricsCollector <- ZIO.service[SystemMetricsCollector]
-      _ <- metricsCollector.startCollection().fork
+      _ <- metricsCollector.startCollection().forkScoped
+
+      // 启动 Redis Streams 消费者
+      sessionConsumer <- ZIO.service[SessionEventConsumer]
+      _ <- sessionConsumer.start.forkScoped
+
+      trainingConsumer <- ZIO.service[TrainingEventConsumer]
+      _ <- trainingConsumer.start.forkScoped
+
+      // 启动 Streams 监控和自动清理
+      monitor <- ZIO.service[StreamsMonitorService]
+      _ <- monitor.startAutoCleanup.forkScoped
+
+      // 启动 Outbox 处理器
+      outboxProcessor <- ZIO.service[OutboxProcessor]
+      _ <- outboxProcessor.start.forkScoped
+
+      // 启动 RabbitMQ 消费者
+      emailConsumer <- ZIO.service[EmailNotificationConsumer]
+      _ <- emailConsumer.start.forkScoped
+
+      smsConsumer <- ZIO.service[SmsNotificationConsumer]
+      _ <- smsConsumer.start.forkScoped
 
       // 启动日志
       _ <- ZIO.logInfo(s"Server starting on http://${appConfig.http.host}:${appConfig.http.port}")
@@ -88,10 +108,13 @@ object Main extends ZIOAppDefault:
     } yield ())
       .provide(
         ZLayer.make[
-          Server & AppConfig & UserService & JwtContent & JwtService & SessionService & DeviceService & AuditService &
-            AuthService & OAuth2Service & Client & SignalingService & ProjectService & SimulationService &
-            TrainingService & HealthCheckService & PrometheusExporter & PrometheusPublisher & SystemMetricsCollector
+          Scope & Server & AppConfig & UserService & JwtContent & JwtService & SessionService & DeviceService & AuditService &
+            AuthService & OAuth2Service & Client & SignalingService & ProjectService & SimulationService & TrainingService & 
+            HealthCheckService & PrometheusExporter & PrometheusPublisher & SystemMetricsCollector & OrganizationService & 
+            SessionEventConsumer & TrainingEventConsumer & OutboxProcessor & StreamsMonitorService & RabbitMQService & 
+            EmailNotificationConsumer & EmailService & SmsNotificationConsumer & SmsService & NotificationService
         ](
+          Scope.default,
           // 业务逻辑层
           UserServiceLive.live,
           AuthServiceLive.live,
@@ -103,48 +126,53 @@ object Main extends ZIOAppDefault:
           DeviceServiceLive.live,
           SignalingServiceLive.live,
           TrainingServiceLive.live,
-
+          OrganizationServiceLive.live,
+          NotificationServiceLive.live,
           // 核心服务层
           JwtServiceLive.live,
           JwtContent.live,
-          NeuroClientLive.live,
+          NeuroClientLive.layer,
           CachedGeoIpService.geoIpLayer,
-          NeuroConnectionManager.live,
           SmartRoutingStrategy.live,
           ClusterRegistryLive.live,
           ResourceAllocationServiceLive.live,
-
+          VerificationCodeServiceLive.live,
           // 监控层
           HealthCheckServiceLive.live,
           PrometheusExporterLive.live,
           SystemMetricsCollectorLive.live,
+          StreamsMonitorService.live,
           prometheusLayer,
           publisherLayer,
           SystemMetricsCollectorLive.config,
-
-          // 集成层
-          KafkaProducerServiceLive.live,
-          KafkaProducerServiceLive.producerLayer,
-          RedisServiceLive.live,
-          RedisServiceLive.singleNode,
-          DomainEventPublisherLive.live,
-
+          // 集成层（Redis Streams + PostgreSQL Outbox + RabbitMQ + Email + SMS）
+          LettuceRedis.live,
+          RabbitMQServiceLive.live,
+          HybridEventPublisher.eventLive,  // 智能路由（默认使用这个）
+          SessionEventConsumer.live,
+          TrainingEventConsumer.live,
+          EmailNotificationConsumer.live,
+          SmsNotificationConsumer.live,
+          OutboxProcessor.live,
+          SmtpEmailService.live,
+          AliyunSmsService.live,
           // 持久化层
           UserRepositoryLive.live,
           SessionRepositoryLive.live,
           SimulationRepositoryLive.live,
           ProjectRepositoryLive.live,
-          SessionMetricsRepositoryLive.live,
           DeviceRepositoryLive.live,
           AuditLogRepositoryLive.live,
           AuthenticatorRepositoryLive.live,
           RefreshTokenRepositoryLive.live,
           ChallengeRepositoryLive.live,
           TrainingRepositoryLive.live,
+          OrganizationRepositoryLive.live,
+          OrganizationMemberRepositoryLive.live,
+          OAuthProviderRepositoryLive.live,
+          OutboxRepositoryLive.live,  // Outbox 仓储
           DefaultDbContext.live,
-          TimescaleDbContext.live,
-          BaseSource.allDataSources,
-
+          BaseSource.postgresLive,
           // 基础设施与配置层
           Server.live,
           Client.default,
@@ -158,4 +186,11 @@ object Main extends ZIOAppDefault:
               .load(deriveConfig[AppConfig])
           )
         )
+      )
+      .ensuring(
+        ZIO.succeed {
+          // 强制终止 JVM，避免等待 SBT launcher 的非 daemon 线程池
+          // 这些线程来自 sbt-launch.jar 的 ipcsocket 库，无法从应用层控制
+          Runtime.getRuntime.halt(0)
+        }.delay(500.millis)
       )

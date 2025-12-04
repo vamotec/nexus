@@ -1,37 +1,39 @@
 
-ThisBuild / version := "0.1.0-SNAPSHOT"
+ThisBuild / version := "0.1.0"
 
 ThisBuild / scalaVersion := "3.7.4"
 
 ThisBuild / sbtVersion := "1.11.7"
 
-ThisBuild / organization := "app.mosia"
+ThisBuild / organization := "vamotec"
 
 ThisBuild / scalacOptions ++= Seq(
-  "-Ydebug", // 启用调试输出
-  "-Xmax-inlines:64",
+  "-encoding", "UTF-8",
+  "-feature",
   "-deprecation",
-  "-Xmacro-settings:quill.macro.log=false",
+  "-unchecked",
+  "-Wconf:src=src_managed/.*:silent"
 )
 
 // 依赖版本
 lazy val Versions = new {
-  val zio = "2.1.22"
-  val zioHttp = "3.5.1"
-  val zioConfig = "4.0.5"
+  val zio = "2.1.23"
+  val zioHttp = "3.7.0"
+  val zioConfig = "4.0.6"
   val zioJson = "0.7.45"
+  val zioLog = "2.5.2"
   val caliban = "2.11.1"
   val quill = "4.8.6"
-  val flyway = "11.17.0"
+  val flyway = "11.17.2"
   val postgresql = "42.7.8"
   val grpc = "1.77.0"
   val scalapb = "0.11.20"
-  val redis = "1.1.8"
   val kafka = "3.6.1"
   val jwt = "11.0.3"
   val prometheus = "0.16.0"
-  val tapir = "1.12.3"
+  val tapir = "1.12.5"
   val slick = "3.6.1"
+  val amqp = "0.5.0"
 }
 
 lazy val codegen = project
@@ -84,16 +86,23 @@ lazy val migration = project
 
 lazy val nexus = project
   .in(file("modules/nexus"))
-  .enablePlugins(
-    JavaAppPackaging,
-    AssemblyPlugin,
-    ScalafmtPlugin,
-  )
+  .enablePlugins(JibPlugin)
   .settings(
     name := "nexus",
     idePackagePrefix := Some("app.mosia.nexus"),
     Global / excludeLintKeys += idePackagePrefix,
+    jibBaseImage := "eclipse-temurin:25-jre",
+    jibRegistry := "ghcr.io",
+    jibTargetImageCredentialHelper := Some("docker-credential-desktop"),
+    jibPlatforms := Set(JibPlatforms.arm64),
+    jibName := "mosia-nexus",
     Compile / mainClass := Some("app.mosia.nexus.Main"),
+    // 定义所有可用的 main classes
+    Compile / discoveredMainClasses := Seq(
+      "app.mosia.nexus.Main",
+      "app.mosia.nexus.MainDebug",
+      "app.mosia.nexus.MinimalMain"
+    ),
     Compile / unmanagedSourceDirectories += baseDirectory.value / "src_managed" / "main",
     Compile / PB.targets := Seq(
       scalapb.gen(grpc = true) -> (Compile / sourceManaged).value / "scalapb",
@@ -125,10 +134,13 @@ lazy val nexus = project
       "com.google.protobuf" % "protobuf-java" % "4.33.1" % "protobuf",
 
       // Redis
-      "dev.zio" %% "zio-redis" % Versions.redis,
+      "io.lettuce" % "lettuce-core" % "7.1.0.RELEASE",
 
-      // Kafka
-      "dev.zio" %% "zio-kafka" % "3.1.0",
+      // RabbitMQ (用于外部通知)
+      "nl.vroste" %% "zio-amqp" % Versions.amqp,
+
+      // JavaMail (SMTP 邮件发送)
+      "com.sun.mail" % "javax.mail" % "1.6.2",
 
       // JWT
       "com.github.jwt-scala" %% "jwt-zio-json" % Versions.jwt,
@@ -138,8 +150,8 @@ lazy val nexus = project
       "io.prometheus" % "simpleclient_hotspot" % Versions.prometheus,
 
       // 日志
-      "dev.zio" %% "zio-logging" % "2.5.1",
-      "dev.zio" %% "zio-logging-slf4j" % "2.5.1",
+      "dev.zio" %% "zio-logging" % Versions.zioLog,
+      "dev.zio" %% "zio-logging-slf4j" % Versions.zioLog,
       "ch.qos.logback" % "logback-classic" % "1.5.21",
 
       // ZIO HTTP
@@ -154,7 +166,6 @@ lazy val nexus = project
       "com.softwaremill.sttp.tapir"   %% "tapir-core"              % Versions.tapir,
       "com.softwaremill.sttp.tapir"   %% "tapir-zio"               % Versions.tapir,
       "com.softwaremill.sttp.tapir"   %% "tapir-zio-http-server"   % Versions.tapir,
-      "com.softwaremill.sttp.tapir"   %% "tapir-swagger-ui-bundle" % Versions.tapir,
       "com.softwaremill.sttp.tapir"   %% "tapir-json-zio"          % Versions.tapir,
 
       // 配置
@@ -162,7 +173,10 @@ lazy val nexus = project
       "dev.zio" %% "zio-config-typesafe" % Versions.zioConfig,
       "dev.zio" %% "zio-config-magnolia" % Versions.zioConfig,
       "io.github.cdimascio" % "dotenv-java" % "3.2.0",
-      "dev.zio" %% "zio-metrics-connectors-prometheus" % "2.5.2"
+      "dev.zio" %% "zio-metrics-connectors-prometheus" % "2.5.4",
+
+      // MacOS 需要
+      "io.netty" % "netty-resolver-dns-native-macos" % "4.2.7.Final" classifier "osx-aarch_64"
     ),
     testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"),
   )
@@ -173,31 +187,14 @@ lazy val root = project
   .settings(
     publish := {},
     publishLocal := {},
-    // 打包配置
-    assembly / mainClass := Some("app.mosia.nexus.Main"),
-    assembly / assemblyJarName := "nexus.jar",
-    assembly / assemblyMergeStrategy := {
-      case PathList("META-INF", xs @ _*) => xs match {
-        case "MANIFEST.MF" :: Nil => MergeStrategy.discard
-        case "services" :: _ => MergeStrategy.concat
-        case _ => MergeStrategy.discard
-      }
-      case "application.conf" => MergeStrategy.concat
-      case "reference.conf" => MergeStrategy.concat
-      case _ => MergeStrategy.first
-    },
-    // Docker 配置
-    //    Docker / packageName := "mosia/nexus",
-    //    Docker / version := version.value,
-    //    Docker / dockerExposedPorts := Seq(8080, 8081, 9090),
-    //    Docker / dockerBaseImage := "eclipse-temurin:25-jre-alpine"
   )
-
-// 代码格式化
-scalafmtOnCompile := true
 
 // 并行测试
 Test / parallelExecution := true
 
 addCommandAlias("fmt", "scalafmtAll")
 addCommandAlias("fmtCheck", "scalafmtCheckAll")
+
+addCommandAlias("nexus-debug", "nexus/runMain app.mosia.nexus.MainDebug")
+addCommandAlias("nexus-minimal", "nexus/runMain app.mosia.nexus.MinimalMain")
+addCommandAlias("nexus-run", "nexus/run")

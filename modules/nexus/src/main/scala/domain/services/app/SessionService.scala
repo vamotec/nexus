@@ -20,3 +20,4 @@ trait SessionService:
   def stopSession(sessionId: SessionId, reason: String = "User requested"): AppTask[SessionResponse]
   def getSessionById(sessionId: SessionId): AppTask[Option[SessionResponse]]
   def listUserSessions(userId: UserId, projectId: ProjectId, limit: Int = 100): AppTask[List[SessionResponse]]
+  def generateControlToken(userId: String, sessionId: String): AppTask[String]

@@ -7,6 +7,9 @@ import domain.model.user.Authenticator
 import java.time.Instant
 import java.util.UUID
 
+/**
+ * 用于手机生物信息登陆方式
+ */
 trait AuthenticatorRepository:
   def findByDeviceIdAndKeyId(deviceId: String, keyId: String): AppTask[Option[Authenticator]]
 

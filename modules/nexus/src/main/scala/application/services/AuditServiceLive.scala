@@ -140,7 +140,7 @@ class AuditServiceLive(
   ): AppTask[Unit] =
     val detailsJson: Either[String, Option[Json]] = QueryParser.parseOptionalJson(details)
     val addressJson: Either[String, Option[Json]] = QueryParser.parseOptionalJson(ipAddress)
-    val log = AuditLog(
+    val log                                       = AuditLog(
       id = AuditLogId.generate(),
       userId = userId,
       action = action,

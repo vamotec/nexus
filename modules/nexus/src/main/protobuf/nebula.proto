@@ -1,0 +1,381 @@
+syntax = "proto3";
+
+package nebula;
+
+option go_package = "github.com/vamotec/nebula/pkg/api/grpc/pb";
+option java_package = "app.mosia.nexus.domain.grpc";
+
+// ==================== 文件服务 ====================
+
+service NebulaFileService {
+  // 文件上传（流式）
+  rpc UploadFile(stream UploadFileRequest) returns (UploadFileResponse);
+
+  // 文件下载（流式）
+  rpc DownloadFile(DownloadFileRequest) returns (stream DownloadFileResponse);
+
+  // 获取文件元数据
+  rpc GetFileMetadata(GetFileMetadataRequest) returns (FileMetadata);
+
+  // 列出文件
+  rpc ListFiles(ListFilesRequest) returns (ListFilesResponse);
+
+  // 删除文件
+  rpc DeleteFile(DeleteFileRequest) returns (DeleteFileResponse);
+
+  // 获取文件版本列表
+  rpc ListVersions(ListVersionsRequest) returns (ListVersionsResponse);
+}
+
+// 文件上传请求
+message UploadFileRequest {
+  oneof request {
+    FileInfo info = 1;      // 第一个消息：元数据
+    bytes chunk = 2;        // 后续消息：数据块
+  }
+}
+
+message FileInfo {
+  string file_id = 1;
+  string path = 2;
+  string content_type = 3;
+  int64 size = 4;
+  string project_id = 5;
+  map<string, string> metadata = 6;
+}
+
+message UploadFileResponse {
+  string file_id = 1;
+  int64 uploaded_bytes = 2;
+  string checksum = 3;
+  string version_id = 4;
+}
+
+// 文件下载请求
+message DownloadFileRequest {
+  string file_id = 1;
+  int64 offset = 2;       // 支持断点续传
+  int64 limit = 3;
+  string version_id = 4;  // 可选：下载特定版本
+}
+
+message DownloadFileResponse {
+  bytes chunk = 1;
+  int64 total_size = 2;
+  string checksum = 3;
+}
+
+// 文件元数据
+message FileMetadata {
+  string id = 1;
+  string path = 2;
+  int64 size = 3;
+  string content_type = 4;
+  string checksum_md5 = 5;
+  int32 version = 6;
+  string project_id = 7;
+  int64 created_at = 8;
+  int64 modified_at = 9;
+
+  // USD 特定字段
+  bool is_usd_file = 10;
+  repeated string references = 11;
+  repeated string layer_stack = 12;
+
+  map<string, string> metadata = 13;
+}
+
+message GetFileMetadataRequest {
+  string file_id = 1;
+}
+
+message ListFilesRequest {
+  string project_id = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+  string filter = 4;      // 过滤条件
+  string order_by = 5;    // 排序字段
+}
+
+message ListFilesResponse {
+  repeated FileMetadata files = 1;
+  int32 total = 2;
+}
+
+message DeleteFileRequest {
+  string file_id = 1;
+  bool permanent = 2;     // 是否永久删除
+}
+
+message DeleteFileResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message ListVersionsRequest {
+  string file_id = 1;
+  int32 limit = 2;
+}
+
+message ListVersionsResponse {
+  repeated FileVersion versions = 1;
+}
+
+message FileVersion {
+  string version_id = 1;
+  int64 created_at = 2;
+  string author = 3;
+  int64 size = 4;
+  string checksum = 5;
+}
+
+// ==================== USD 协同服务 ====================
+
+service NebulaCollabService {
+  // 创建协同会话
+  rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse);
+
+  // 加入会话
+  rpc JoinSession(JoinSessionRequest) returns (JoinSessionResponse);
+
+  // 离开会话
+  rpc LeaveSession(LeaveSessionRequest) returns (LeaveSessionResponse);
+
+  // 应用 USD Delta
+  rpc ApplyDelta(ApplyDeltaRequest) returns (ApplyDeltaResponse);
+
+  // 获取 Layer
+  rpc GetLayer(GetLayerRequest) returns (GetLayerResponse);
+
+  // 获取锁
+  rpc AcquireLock(AcquireLockRequest) returns (AcquireLockResponse);
+
+  // 释放锁
+  rpc ReleaseLock(ReleaseLockRequest) returns (ReleaseLockResponse);
+}
+
+message CreateSessionRequest {
+  string stage_url = 1;        // omni://nebula/project/scene.usd
+  repeated string user_ids = 2;
+  map<string, string> options = 3;
+}
+
+message CreateSessionResponse {
+  string session_id = 1;
+  string websocket_url = 2;    // ws://neuro/collab/{session_id}
+  repeated string base_layers = 3;
+}
+
+message JoinSessionRequest {
+  string session_id = 1;
+  string user_id = 2;
+}
+
+message JoinSessionResponse {
+  bool success = 1;
+  string user_layer = 2;       // 用户编辑层路径
+  repeated string layer_stack = 3;
+}
+
+message LeaveSessionRequest {
+  string session_id = 1;
+  string user_id = 2;
+}
+
+message LeaveSessionResponse {
+  bool success = 1;
+}
+
+message ApplyDeltaRequest {
+  string session_id = 1;
+  string user_id = 2;
+  USDDelta delta = 3;
+}
+
+message ApplyDeltaResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+message USDDelta {
+  string layer_path = 1;
+  repeated PrimChange changes = 2;
+  int64 timestamp = 3;
+  string author = 4;
+}
+
+message PrimChange {
+  string prim_path = 1;         // /World/Robot/Arm
+  ChangeOperation operation = 2;
+  map<string, string> attributes = 3;
+}
+
+enum ChangeOperation {
+  ADD = 0;
+  REMOVE = 1;
+  MODIFY = 2;
+}
+
+message GetLayerRequest {
+  string layer_path = 1;
+}
+
+message GetLayerResponse {
+  bytes layer_data = 1;
+  string checksum = 2;
+}
+
+message AcquireLockRequest {
+  string session_id = 1;
+  string user_id = 2;
+  string prim_path = 3;
+  int32 ttl_seconds = 4;  // 锁的 TTL
+}
+
+message AcquireLockResponse {
+  bool success = 1;
+  string error = 2;
+  int64 expires_at = 3;
+}
+
+message ReleaseLockRequest {
+  string session_id = 1;
+  string user_id = 2;
+  string prim_path = 3;
+}
+
+message ReleaseLockResponse {
+  bool success = 1;
+}
+
+// ==================== 跨中心同步服务 ====================
+
+service NebulaSyncService {
+  // 同步文件到本中心
+  rpc SyncFile(stream SyncFileRequest) returns (SyncFileResponse);
+
+  // 检查文件版本
+  rpc GetFileVersion(FileVersionRequest) returns (FileVersionResponse);
+
+  // 获取文件列表（用于对比差异）
+  rpc GetFileList(FileListRequest) returns (FileListResponse);
+
+  // 批量同步
+  rpc BatchSync(BatchSyncRequest) returns (stream BatchSyncResponse);
+}
+
+message SyncFileRequest {
+  oneof request {
+    SyncFileInfo info = 1;
+    bytes chunk = 2;
+  }
+}
+
+message SyncFileInfo {
+  string file_id = 1;
+  string source_center = 2;
+  FileMetadata metadata = 3;
+  bool compressed = 4;  // 是否压缩
+}
+
+message SyncFileResponse {
+  bool success = 1;
+  string checksum = 2;
+  string error = 3;
+}
+
+message FileVersionRequest {
+  string file_id = 1;
+}
+
+message FileVersionResponse {
+  int32 version = 1;
+  string version_id = 2;
+  int64 modified_at = 3;
+}
+
+message FileListRequest {
+  string project_id = 1;
+  int64 modified_since = 2;  // 时间戳，获取增量
+}
+
+message FileListResponse {
+  repeated FileMetadata files = 1;
+}
+
+message BatchSyncRequest {
+  repeated string file_ids = 1;
+  string source_center = 2;
+}
+
+message BatchSyncResponse {
+  string file_id = 1;
+  bool success = 2;
+  string error = 3;
+  int32 progress = 4;  // 百分比
+}
+
+// ==================== Nucleus 兼容服务 ====================
+
+service NebulaNucleusService {
+  // 打开 USD Stage
+  rpc OpenStage(OpenStageRequest) returns (OpenStageResponse);
+
+  // 解析依赖
+  rpc ResolveDependencies(ResolveDependenciesRequest) returns (ResolveDependenciesResponse);
+
+  // 订阅变更（Server Streaming）
+  rpc SubscribeChanges(SubscribeChangesRequest) returns (stream ChangeNotification);
+}
+
+message OpenStageRequest {
+  string omni_url = 1;     // omni://nebula/project/scene.usd
+  string user_id = 2;
+}
+
+message OpenStageResponse {
+  string stage_id = 1;
+  string root_layer = 2;
+  repeated string dependencies = 3;
+  string session_id = 4;   // 协同会话 ID
+}
+
+message ResolveDependenciesRequest {
+  string layer_path = 1;
+}
+
+message ResolveDependenciesResponse {
+  repeated string dependencies = 1;
+}
+
+message SubscribeChangesRequest {
+  string stage_id = 1;
+  string user_id = 2;
+}
+
+message ChangeNotification {
+  string stage_id = 1;
+  USDDelta delta = 2;
+  int64 timestamp = 3;
+}
+
+// ==================== 健康检查 ====================
+
+service NebulaHealthService {
+  rpc Check(HealthCheckRequest) returns (HealthCheckResponse);
+  rpc Watch(HealthCheckRequest) returns (stream HealthCheckResponse);
+}
+
+message HealthCheckRequest {
+  string service = 1;
+}
+
+message HealthCheckResponse {
+  enum ServingStatus {
+    UNKNOWN = 0;
+    SERVING = 1;
+    NOT_SERVING = 2;
+    SERVICE_UNKNOWN = 3;
+  }
+  ServingStatus status = 1;
+}

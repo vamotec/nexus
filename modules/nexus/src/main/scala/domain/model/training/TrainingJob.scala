@@ -37,10 +37,10 @@ case class TrainingJob(
     copy(
       status = TrainingStatus.Completed,
       result = Some(result),
-      completedAt = Some(Instant.now()),
+      completedAt = Some(Instant.now())
     )
 
   def fail(error: String): TrainingJob =
     copy(
-      status = TrainingStatus.Failed,
+      status = TrainingStatus.Failed
     )

@@ -8,13 +8,12 @@ import domain.model.user.UserId
 import domain.repository.ProjectRepository
 import domain.services.app.ProjectService
 
-import zio.json.*
 import zio.*
 
 import java.time.Instant
 import java.util.UUID
 
-class ProjectServiceLive(repo: ProjectRepository) extends ProjectService:
+final class ProjectServiceLive(repo: ProjectRepository) extends ProjectService:
 
   /** 创建新项目 */
   override def createProject(
@@ -45,9 +44,7 @@ class ProjectServiceLive(repo: ProjectRepository) extends ProjectService:
         createdAt = now,
         updatedAt = now
       )
-
-      // 3. 持久化到数据库
-//      _ <- repo.save(project)
+      
       // 3. 持久化到数据库
       _ <- ZIO.logInfo(s"Attempting to save project: ${project.id}") *>
         repo
