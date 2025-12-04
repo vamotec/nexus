@@ -1,2 +1,0 @@
-ALTER TABLE sessions
-    ADD COLUMN cluster_id VARCHAR(36) NOT NULL;

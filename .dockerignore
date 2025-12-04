@@ -1,0 +1,8 @@
+target/
+project/target/
+modules/nexus/target/
+.git/
+.idea/
+*.log
+.env
+.env.*

@@ -2,11 +2,7 @@ package app.mosia.nexus
 package application.dto.response.session
 
 import application.dto.response.scene.SceneResponse
-import application.dto.response.session.{
-  ControlEndpointResponse,
-  SessionMetricsResponse,
-  StreamEndpointResponse
-}
+import application.dto.response.session.{ControlEndpointResponse, SessionMetricsResponse, StreamEndpointResponse}
 import domain.model.session.SessionStatus
 
 import caliban.schema.{ArgBuilder, Schema as Cs}

@@ -8,8 +8,8 @@ import zio.*
 import zio.json.ast.Json
 
 case class ControlEndpointResponse(
-  controlWsUrl: String, // e.g., "ws://neuro:8765/control/session-123"
-  controlToken: String, // 24 小时有效的 JWT token
+  wsUrl: String, // e.g., "ws://neuro:8765/control/session-123"
+  token: String, // 24 小时有效的 JWT token
   webrtcSignalingUrl: String
 ) derives Cs.SemiAuto,
       ArgBuilder

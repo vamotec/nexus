@@ -7,18 +7,20 @@ import application.dto.response.user.UserResponse
 import application.util.CryptoUtils
 import domain.config.AppConfig
 import domain.error.*
+import domain.model.jwt.TokenType.Access
+import domain.model.jwt.{Payload, Permission}
 import domain.model.user.*
 import domain.repository.{AuthenticatorRepository, ChallengeRepository, RefreshTokenRepository}
 import domain.services.app.{AuthService, UserService}
 import domain.services.infra.JwtService
 
+import app.mosia.nexus.domain.model.user.UserRole.toPermission
 import sttp.model.headers.Cookie.SameSite
 import sttp.model.headers.CookieWithMeta
-import zio.json.*
 import zio.*
 
 import java.time.Instant
-import java.util.{Base64, UUID}
+import java.util.Base64
 
 // AuthServiceLive 的构造函数现在需要传入 userRepo 和 jwtService
 final class AuthServiceLive(
@@ -38,9 +40,12 @@ final class AuthServiceLive(
   override def passwordLogin(email: String, plainPassword: String): AppTask[User] =
     for
       userOpt <- userService.authenticate(email, plainPassword)
-      user <- ZIO.fromOption(userOpt).mapError(_ => InvalidCredentials())
+      user <- ZIO.fromOption(userOpt).mapError(_ => InvalidCredentials("login service"))
     yield user
 
+  override def registerUser(email: String, plainPassword: String, name: String): AppTask[User] = 
+    userService.createUser(email, plainPassword, Some(name))
+      
   def biometricLogin(bioRequest: BiometricAuthRequest): AppTask[User] =
     for
       challengeOpt <- challengeRepo.findValidChallenge(bioRequest.challenge)
@@ -48,7 +53,6 @@ final class AuthServiceLive(
         .fromOption(challengeOpt)
         .orElseFail(InvalidChallenge())
       _ <- ZIO.when(challenge.deviceId.exists(_ != bioRequest.deviceId))(ZIO.fail(Unauthenticated("Device mismatch")))
-//      deviceId <- DeviceId.fromString(bioRequest.deviceId)
       maybeAuth <- authenticatorRepo.findByDeviceIdAndKeyId(bioRequest.deviceId, bioRequest.keyId)
       auth <- ZIO.fromOption(maybeAuth).orElseFail(Unauthenticated("Unknow deviceId or keyId"))
       // 4. verify signature
@@ -68,16 +72,25 @@ final class AuthServiceLive(
         .flatMap:
           case Some(_) => ZIO.unit
           case None => ZIO.fail(Unauthenticated("Failed to consume challenge"))
-      userOpt <- userService.findById(auth.userId)
-      user <- ZIO.fromOption(userOpt).mapError(_ => InvalidCredentials())
+      userOpt <- userService.findById(auth.userId.value.toString)
+      user <- ZIO.fromOption(userOpt).mapError(_ => InvalidCredentials("biometric"))
     yield user
 
   // 生成短期 JWT Access Token
-  override def generateAccessToken(userId: UserId, platform: Option[String]): AppTask[String] =
-    jwtService.generateToken(userId, platform)
+  override def generateAccessToken(userId: String, platform: Option[String]): AppTask[String] =
+    for 
+      userOpt <- userService.findById(userId)
+      user <- ZIO.fromOption(userOpt)
+        .orElseFail(NotFound("user", userId))
+      permission = toPermission(user.role)
+      payload = Payload(
+        permission = Set(permission), tokenType = Access
+      )
+      token <- jwtService.generateToken(userId, payload, "nexus", platform)
+    yield token
 
   // 生成长期 Refresh Token（随机字符串 + 数据库存储）
-  override def generateRefreshToken(userId: UserId, platform: Option[String]): AppTask[String] =
+  override def generateRefreshToken(userId: String, platform: Option[String]): AppTask[String] =
     for
       // 生成安全的随机 token
       randomBytes <- Random.nextBytes(32)
@@ -101,7 +114,7 @@ final class AuthServiceLive(
     yield token
 
   // 验证 Refresh Token
-  override def validateRefreshToken(token: String): AppTask[UserId] =
+  override def validateRefreshToken(token: String): AppTask[String] =
     for
       recordOpt <- refreshTokenRepo.findByToken(token)
       record <- ZIO.fromOption(recordOpt).orElseFail(InvalidInput("refresh token", "Invalid refresh token"))
@@ -114,7 +127,7 @@ final class AuthServiceLive(
     yield record.userId
 
   override def rotateRefreshToken(
-    userId: UserId,
+    userId: String,
     oldToken: String,
     newToken: String,
     ttlSeconds: Long = 7 * 24 * 3600
@@ -124,7 +137,7 @@ final class AuthServiceLive(
       old <- ZIO
         .fromOption(maybeOld)
         .orElseFail(InvalidInput("refresh token", "Old refresh token not found"))
-      _ <- if old.userId != userId then ZIO.fail(NotFound("User", userId.value.toString)) else ZIO.unit
+      _ <- if old.userId != userId then ZIO.fail(NotFound("User", userId)) else ZIO.unit
       _ <- refreshTokenRepo.markAsRevoked(oldToken) // 废弃旧 token
       id <- Random.nextLong.map(_.abs)
       newRow = RefreshToken(id, newToken, userId, Instant.now().plusSeconds(ttlSeconds), None)

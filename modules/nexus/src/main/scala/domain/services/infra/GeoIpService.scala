@@ -1,7 +1,7 @@
 package app.mosia.nexus
 package domain.services.infra
 
-import domain.config.neuro.GeoLocation
+import domain.config.cloud.GeoLocation
 import domain.error.{AppError, AppTask}
 import zio.json.*
 import zio.*

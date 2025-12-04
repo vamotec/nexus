@@ -40,7 +40,7 @@ object FlywayMigration:
     private def getFlyway(dbType: DatabaseType): Flyway =
       val (dbConfig, location) = dbType match
         case DatabaseType.Postgres => (config.postgres, config.locations.postgres)
-        case DatabaseType.Timescale => (config.timescale, config.locations.timescale)
+        case DatabaseType.Timescale => (config.postgres, "")
 
       val dataSource = createDataSource(dbConfig)
 

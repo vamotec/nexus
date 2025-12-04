@@ -37,7 +37,7 @@ class MetricsServiceLive(
         .findById(sessionId)
         .someOrFail(NotFound("Session", sessionId.value.toString))
         .zipPar(
-          metricsRepo.getAggregated(sessionId.value, from, now, AggregationInterval.Hour)
+          metricsRepo.getAggregated(sessionId, from, now, AggregationInterval.Hour)
         )
       // 计算概览统计
       summary = calculateSummary(aggregated, duration)
@@ -125,7 +125,7 @@ class MetricsServiceLive(
 
   override def getRealtimeMetrics(sessionId: SessionId): AppTask[RealtimeMetricsResponse] =
     for
-      metricsOpt <- metricsRepo.getLatest(sessionId.value)
+      metricsOpt <- metricsRepo.getLatest(sessionId)
       metrics <- metricsOpt.toZIOOrFail(NotFound("Metrics", sessionId.value.toString))
       sessionOpt <- sessionRepo.findById(sessionId)
       session <- sessionOpt.toZIOOrFail(NotFound("Session", sessionId.value.toString))
@@ -141,7 +141,7 @@ class MetricsServiceLive(
   ): AppTask[PerformanceChartResponse] =
     for
       aggregated <- metricsRepo.getAggregated(
-        sessionId.value,
+        sessionId,
         timeRange.start,
         timeRange.end,
         AggregationInterval.fromString(interval)

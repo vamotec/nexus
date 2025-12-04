@@ -7,4 +7,5 @@ import zio.json.*
 import zio.*
 import zio.json.ast.Json
 
+@jsonMemberNames(SnakeCase)
 case class ChallengeResponse(challenge: String, expiresAt: Long) derives JsonCodec

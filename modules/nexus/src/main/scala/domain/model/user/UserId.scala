@@ -11,7 +11,7 @@ import zio.json.*
 import zio.*
 import zio.json.ast.Json
 
-case class UserId(value: UUID) extends EntityId[UserId] derives JsonCodec, Cs.SemiAuto, ArgBuilder
+case class UserId(value: UUID) extends EntityId[UserId] derives JsonCodec, Schema, Cs.SemiAuto, ArgBuilder
 
 object UserId:
   def generate(): UserId = UserId(UUID.randomUUID())

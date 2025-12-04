@@ -3,28 +3,50 @@ package presentation.http
 
 import domain.config.AppConfig
 import domain.services.app.*
-import domain.services.infra.{HealthCheckService, JwtService, PrometheusExporter}
-import presentation.http.endpoint.*
-import presentation.http.websocket.WsRoutes
+import domain.services.infra.*
+import presentation.http.v1.*
 
-import sttp.tapir.server.ziohttp.ZioHttpInterpreter
-import zio.ZIO
+import sttp.model.{Method, StatusCode}
+import sttp.tapir.server.interceptor.cors.CORSConfig.*
+import sttp.tapir.server.interceptor.cors.{CORSConfig, CORSInterceptor}
+import sttp.tapir.server.ziohttp.{ZioHttpInterpreter, ZioHttpServerOptions}
 import zio.http.*
+import zio.{Task, ZIO}
 
 object RESTApi:
-  def makePublic: ZIO[
-    PrometheusExporter & HealthCheckService & SessionService & AuditService & DeviceService & UserService &
-      OAuth2Service & AuthService & AppConfig,
-    Nothing,
-    Routes[SignalingService & JwtService, Response]
-  ] =
+  private val allowedDomains = Set(
+    "http://localhost:3000",
+    "https://staging.mosia.app",
+    "https://mosia.app"
+  )
+
+  private val corsInterceptor: CORSInterceptor[Task] = CORSInterceptor.customOrThrow[Task](
+    CORSConfig(
+      allowedOrigin = AllowedOrigin.Matching(origin => allowedDomains.contains(origin)),
+      allowedCredentials = AllowedCredentials.Allow,
+      allowedMethods = AllowedMethods.Some(Set(Method.GET, Method.HEAD, Method.POST, Method.PUT, Method.DELETE)),
+      allowedHeaders = AllowedHeaders.Reflect,
+      exposedHeaders = ExposedHeaders.None,
+      maxAge = MaxAge.Default,
+      preflightResponseStatusCode = StatusCode.NoContent
+    )
+  )
+
+  private val serverOptions: ZioHttpServerOptions[Any] = ZioHttpServerOptions
+    .customiseInterceptors
+    .corsInterceptor(corsInterceptor)
+    .options
+  
+  def makePublic(config: AppConfig): ZIO[PrometheusExporter & HealthCheckService & SessionService & 
+    NotificationService & AuditService & DeviceService & UserService & OAuth2Service & AuthService, 
+    Nothing, Routes[Any, Response]] =
     for
-      config <- ZIO.service[AppConfig]
       authService <- ZIO.service[AuthService]
       oauthService <- ZIO.service[OAuth2Service]
       userService <- ZIO.service[UserService]
       deviceService <- ZIO.service[DeviceService]
       auditService <- ZIO.service[AuditService]
+      notificationService <- ZIO.service[NotificationService]
       sessionService <- ZIO.service[SessionService]
       healthService <- ZIO.service[HealthCheckService]
       prometheus <- ZIO.service[PrometheusExporter]
@@ -33,7 +55,9 @@ object RESTApi:
       tapirEndpoints = AuthEndpoint(
         authService,
         deviceService,
-        auditService
+        auditService,
+        notificationService,
+        userService
       ).publicEndpoints ++ OAuth2Endpoint(
         oauthService,
         authService
@@ -46,20 +70,18 @@ object RESTApi:
         config,
         prometheus
       ).publicEndpoints
-
+      
       // Convert Tapir endpoints to ZIO HTTP routes
-      tapirRoutes <- ZIO.succeed(ZioHttpInterpreter().toHttp[Any](tapirEndpoints))
-
-      // Combine all routes
-      allRoutes = tapirRoutes
-    yield allRoutes
+      tapirRoutes <- ZIO.succeed(ZioHttpInterpreter(serverOptions).toHttp[Any](tapirEndpoints))
+    yield tapirRoutes
 
   def makeSecure
-    : ZIO[SignalingService & SessionService & UserService, Nothing, Routes[SignalingService & JwtService, Response]] =
+    : ZIO[SignalingService & SessionService & UserService & OrganizationService, Nothing, Routes[SignalingService & JwtContent, Response]] =
     for
       userService <- ZIO.service[UserService]
       sessionService <- ZIO.service[SessionService]
       signalingService <- ZIO.service[SignalingService]
+      organizationService <- ZIO.service[OrganizationService]
 
       // Tapir endpoints
       tapirEndpoints = UserEndpoint(
@@ -67,11 +89,10 @@ object RESTApi:
       ).secureEndpoints ++ WebRTCEndpoint(
         sessionService,
         signalingService
+      ).secureEndpoints ++ OrganizationEndpoint(
+        organizationService
       ).secureEndpoints
 
       // Convert Tapir endpoints to ZIO HTTP routes
-      tapirRoutes <- ZIO.succeed(ZioHttpInterpreter().toHttp[JwtService](tapirEndpoints))
-
-      // Combine all routes
-      allRoutes = tapirRoutes ++ WsRoutes.routes
-    yield allRoutes
+      tapirRoutes <- ZIO.succeed(ZioHttpInterpreter(serverOptions).toHttp[JwtContent](tapirEndpoints))
+    yield tapirRoutes

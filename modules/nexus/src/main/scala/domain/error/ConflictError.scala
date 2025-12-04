@@ -14,7 +14,7 @@ object ConflictError:
     cause: Option[Throwable] = None,
     context: Map[String, String] = Map.empty
   ) extends ConflictError:
-    val message = constraintName match
+    val message: String = constraintName match
       case Some(constraint) =>
         s"$entityType with identifier '$identifier' already exists (constraint: $constraint)"
       case None =>
@@ -44,10 +44,11 @@ object ConflictError:
       s"$entityType '$identifier' was modified by another operation. Please retry."
     val errorCode = "CONCURRENT_MODIFICATION"
 
-  case class UserAlreadyExists(
-    email: String,
+  case class AlreadyExists(
+    filed: String,
+    value: String,
     cause: Option[Throwable] = None,
     context: Map[String, String] = Map.empty
   ) extends ConflictError:
-    val message   = s"User email: $email already exists"
-    val errorCode = "USERNAME_ALREADY_EXISTS"
+    val message   = s"$filed: $value already exists"
+    val errorCode = "ALREADY_EXISTS"

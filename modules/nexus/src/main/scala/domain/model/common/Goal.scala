@@ -27,7 +27,6 @@ object Goal:
 
     // 目标条件
     condition: GoalCondition,
-    
 
     // 时间限制
     timeConstraints: TimeConstraints,
@@ -133,7 +132,7 @@ object Goal:
   case class GoalMonitoring(
     updateFrequency: Duration = Duration.fromSeconds(1),
     metricsToTrack: Set[GoalMetric] = Set(GoalMetric.Progress, GoalMetric.TimeRemaining),
-    alerts: List[GoalAlert] = List.empty,
+    alerts: List[GoalAlert] = List.empty
   )
 
   /** 目标指标 */

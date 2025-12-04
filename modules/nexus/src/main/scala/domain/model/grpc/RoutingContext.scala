@@ -3,7 +3,7 @@ package domain.model.grpc
 
 import domain.model.common.Priority
 import domain.model.session.SessionMode
-import domain.config.neuro.GeoLocation
+import domain.config.cloud.GeoLocation
 import domain.model.project.*
 import domain.model.user.UserId
 

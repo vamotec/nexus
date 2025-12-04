@@ -6,17 +6,19 @@ import application.dto.response.scene.SceneResponse
 import application.dto.response.session.*
 import domain.error.*
 import domain.model.grpc.RoutingContext
+import domain.model.jwt.Payload
+import domain.model.jwt.Permission.*
+import domain.model.jwt.TokenType.Control
 import domain.model.metrics.SimSessionMetrics
 import domain.model.project.ProjectId
 import domain.model.scene.SceneConfig
 import domain.model.session.*
 import domain.model.simulation.SimulationId
 import domain.model.user.UserId
-import domain.repository.{ProjectRepository, SessionMetricsRepository, SessionRepository, SimulationRepository}
+import domain.repository.{ProjectRepository, SessionRepository, SimulationRepository}
 import domain.services.app.SessionService
 import domain.services.infra.*
 
-import zio.json.*
 import zio.*
 
 import java.time.Instant
@@ -33,7 +35,6 @@ final class SessionServiceLive(
   sessionRepository: SessionRepository,
   simulationRepository: SimulationRepository,
   projectRepository: ProjectRepository,
-  sessionMetricsRepository: SessionMetricsRepository,
   resourceAllocation: ResourceAllocationService,
   jwtService: JwtService,
   geoIpService: GeoIpService,
@@ -122,12 +123,16 @@ final class SessionServiceLive(
       _ <- sessionRepository.update(updatedSession)
 
       // 9. 根据模式生成 control token 和 endpoints (仅 Manual/Hybrid 需要 WebRTC)
-      controlToken <-
+      sessionToken <-
         if mode.needsWebRTC then
-          jwtService.generateSessionToken(
-            sessionId = sessionId,
-            userId = userId,
-            permissions = Set("control", "view", "metrics")
+          jwtService.generateToken(
+            userId.value.toString,
+            Payload(
+              sessionId = Some(sessionId.value.toString),
+              permission = Set(),//TODO:权限还没写
+              tokenType = Control
+            ),
+            "neuro"
           )
         else ZIO.succeed("")
 
@@ -154,8 +159,8 @@ final class SessionServiceLive(
           if mode.needsWebRTC then
             Some(
               ControlEndpointResponse(
-                controlWsUrl = resourceAssignment.controlEndpoint.wsUrl,
-                controlToken = controlToken,
+                wsUrl = resourceAssignment.controlEndpoint.wsUrl,
+                token = sessionToken,
                 webrtcSignalingUrl = s"ws://nexus:8080/api/webrtc/signaling/${sessionId.value}"
               )
             )
@@ -247,6 +252,19 @@ final class SessionServiceLive(
       responses <- ZIO.foreach(limited)(buildSessionResponse)
     yield responses).mapError(toAppError)
 
+  override def generateControlToken(userId: String, sessionId: String): AppTask[String] =
+    for
+      // TODO:验证 session 是否存在
+      token <- jwtService.generateToken(
+        userId,
+        Payload(
+          sessionId = Some(sessionId),
+          permission = Set(Admin, Editor), //TODO: 真正的权限还没设计
+          tokenType = Control
+        ),
+        "neuro"
+      )
+    yield token
   // ============================================================================
   // 辅助方法 - Domain ↔ DTO 转换
   // ============================================================================
@@ -255,12 +273,16 @@ final class SessionServiceLive(
   private def buildSessionResponse(session: SimSession): Task[SessionResponse] =
     for
       // 根据模式生成 control token (仅 Manual/Hybrid 需要)
-      controlToken <-
+      sessionToken <-
         if session.mode.needsWebRTC then
-          jwtService.generateSessionToken(
-            sessionId = session.id,
-            userId = session.userId,
-            permissions = Set("control", "view", "metrics")
+          jwtService.generateToken(
+            session.userId.value.toString,
+            Payload(
+              sessionId = Some(session.id.value.toString),
+              permission = Set(), //TODO:权限还没写
+              tokenType = Control
+            ),
+            "neuro"
           )
         else ZIO.succeed("")
     yield SessionResponse(
@@ -283,10 +305,10 @@ final class SessionServiceLive(
         else None,
       controlEndpoint =
         if session.mode.needsWebRTC then
-          session.resourceAssignment.map(ra =>
+          session.resourceAssignment.map( ra =>
             ControlEndpointResponse(
-              controlWsUrl = ra.controlEndpoint.wsUrl,
-              controlToken = controlToken,
+              wsUrl = ra.controlEndpoint.wsUrl,
+              token = sessionToken,
               webrtcSignalingUrl = s"ws://nexus:8080/api/webrtc/signaling/${session.id.value}"
             )
           )
@@ -321,9 +343,9 @@ final class SessionServiceLive(
 
 object SessionServiceLive:
   val live: ZLayer[
-    SessionRepository & SimulationRepository & SessionMetricsRepository & ProjectRepository &
+    SessionRepository & SimulationRepository & ProjectRepository &
       ResourceAllocationService & NeuroClient & JwtService & GeoIpService & ClusterRoutingStrategy,
     Nothing,
     SessionServiceLive
   ] =
-    ZLayer.fromFunction(SessionServiceLive(_, _, _, _, _, _, _, _))
+    ZLayer.fromFunction(SessionServiceLive(_, _, _, _, _, _, _))

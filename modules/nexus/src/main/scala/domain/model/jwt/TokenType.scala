@@ -1,5 +1,7 @@
 package app.mosia.nexus
 package domain.model.jwt
 
-enum TokenType:
-  case Access, Refresh, Session, Omniverse
+import zio.json.JsonCodec
+
+enum TokenType derives JsonCodec:
+  case Access, Refresh, Control, Nebula

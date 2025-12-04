@@ -10,6 +10,7 @@ import sttp.tapir.Schema
 import zio.json.*
 import zio.*
 import zio.json.ast.Json
+
 /** 会话结果 (完成后写入，不可变) */
 case class SessionResult(
   sessionId: SessionId,

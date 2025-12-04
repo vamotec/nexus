@@ -11,20 +11,22 @@ import sttp.model.headers.CookieWithMeta
 trait AuthService:
   def passwordLogin(email: String, plainPassword: String): AppTask[User]
 
+  def registerUser(email: String, plainPassword: String, name: String): AppTask[User]
+
   def biometricLogin(bioRequest: BiometricAuthRequest): AppTask[User]
 
   def createChallenge(userId: Option[UserId], deviceId: Option[String]): AppTask[Challenge]
 
-  def generateAccessToken(userId: UserId, platform: Option[String]): AppTask[String]
+  def generateAccessToken(userId: String, platform: Option[String]): AppTask[String]
 
-  def generateRefreshToken(userId: UserId, platform: Option[String]): AppTask[String]
+  def generateRefreshToken(userId: String, platform: Option[String]): AppTask[String]
 
-  def validateRefreshToken(token: String): AppTask[UserId]
+  def validateRefreshToken(token: String): AppTask[String]
 
   def revokeRefreshToken(token: String): AppTask[Unit]
 
   def rotateRefreshToken(
-    userId: UserId,
+    userId: String,
     oldToken: String,
     newToken: String,
     ttlSeconds: Long = 7 * 24 * 3600

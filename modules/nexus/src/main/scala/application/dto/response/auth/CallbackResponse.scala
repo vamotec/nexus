@@ -9,8 +9,10 @@ import zio.json.*
 import zio.*
 import zio.json.ast.Json
 
+@jsonMemberNames(SnakeCase)
 case class CallbackResponse(
   user: UserResponse,
+  redirectUri: String,
   platform: Option[String]
 ) derives JsonCodec,
       Schema

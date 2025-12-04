@@ -1,28 +1,44 @@
 package app.mosia.nexus
 package presentation
 
-import domain.services.infra.JwtContent
-import domain.model.jwt.JwtPayload
-import domain.services.infra.JwtService
 import domain.config.AppConfig
+import domain.model.jwt.Payload
+import domain.model.jwt.TokenType.*
+import domain.services.infra.{JwtContent, JwtService}
 
-import zio.{Duration, NonEmptyChunk, UIO, ZIO}
-import zio.http.Middleware.CorsConfig
 import zio.http.*
+import zio.http.Middleware.CorsConfig
 import zio.json.DecoderOps
+import zio.{Duration, NonEmptyChunk, ZIO}
 
 object Middleware:
-  /** 将 domain.config.CorsConfig 转换为 zio.http.Middleware.CorsConfig */
   def corsConfig(config: AppConfig): CorsConfig =
+    // 预解析允许的 origins
+    val parsedOrigins = config.cors.allowedOrigins.flatMap { originStr =>
+      Header.Origin.parse(originStr) match {
+        case Right(origin) => Some(origin)
+        case Left(err) =>
+          println(s"[CORS] Failed to parse origin '$originStr': $err")
+          None
+      }
+    }
+
     CorsConfig(
       allowedOrigin = origin =>
+        val originStr = Header.Origin.render(origin)
+        println(s"[CORS] Request from: $originStr")
+        println(s"[CORS] Allowed origins: ${config.cors.allowedOrigins}")
+
         if config.cors.enabled then
           config.cors.allowedOrigins match
             case List("*") => Some(Header.AccessControlAllowOrigin.All)
-            case origins =>
-              val originStr = origin.toString
-              if origins.contains(originStr) then Some(Header.AccessControlAllowOrigin.Specific(origin))
-              else None
+            case _ =>
+              val allowed = parsedOrigins.contains(origin)
+              println(s"[CORS] Origin allowed: $allowed")
+              if allowed then
+                Some(Header.AccessControlAllowOrigin.Specific(origin))
+              else
+                None
         else None,
       allowedMethods =
         if config.cors.allowedMethods.contains("*") then Header.AccessControlAllowMethods.All
@@ -47,55 +63,84 @@ object Middleware:
           Header.AccessControlExposeHeaders.None,
       maxAge = Some(Header.AccessControlMaxAge(Duration.fromSeconds(config.cors.maxAge.toLong)))
     )
-  // 这是一个 ZIO HTTP 中间件，它会拦截请求
-  // 如果请求包含有效的 JWT, 它会将 JWT 的内容 (JwtContent) 注入到 ZIO 环境中，然后交由被它包裹的路由处理器处理
-  // 如果 JWT 无效或不存在, 它会直接返回 401 Unauthorized 错误
-  private lazy val isDev: Boolean = {
-    val env    = sys.env.getOrElse("APP_ENV", sys.props.getOrElse("APP_ENV", "production"))
-    val result = env == "development"
-    println(s"[AuthMiddleware] Running in ${if result then "DEVELOPMENT" else "PRODUCTION"} mode (APP_ENV=$env)")
-    result
-  }
-
-  private val logDevModeOnce: UIO[Unit] =
-    ZIO
-      .logWarning("DEV MODE: Authentication bypassed for development")
-      .once
-      .map(_ => ())
-
-  private val devPayload = JwtPayload(
-    userIdStr = "550e8400-e29b-41d4-a716-446655440000"
-  )
 
   val auth: Middleware[JwtService & JwtContent] = new Middleware:
-    override def apply[Env1 <: JwtService & JwtContent, Err](routes: Routes[Env1, Err]): Routes[Env1, Err] =
+    override def apply[Env1 <: JwtService & JwtContent, Err](
+                                                              routes: Routes[Env1, Err]
+                                                            ): Routes[Env1, Err] =
       routes.transform: handler =>
         Handler.scoped:
           Handler.fromFunctionZIO[Request]: request =>
-            request.header(Header.Authorization) match
-              case Some(Header.Authorization.Bearer(token)) =>
-                // 有 token，正常验证
-                for
-                  jwtService <- ZIO.service[JwtService]
-                  claim <- jwtService
-                    .decode(token.value.toArray.mkString)
-                    .mapError(_ => Response.unauthorized("Invalid token"))
-                  ctx <- ZIO.service[JwtContent]
-                  payload <- ZIO
-                    .fromEither(claim.content.fromJson[JwtPayload])
-                    .mapError(e => Response.internalServerError(s"Failed to decode claim content: $e"))
-                  _ <- ctx.set(payload)
-                  response <- handler(request)
-                yield response
+            val origin = request.header(Header.Origin).map(_.renderedValue).getOrElse("unknown")
+            ZIO.logInfo(
+              s"""[Auth Middleware] Request Info:
+                 |  Method: ${request.method}
+                 |  Path: ${request.path}
+                 |  Origin: $origin
+                 |""".stripMargin
+            ) *>
+              (if (request.method == Method.OPTIONS) {
+                // 直接放行，不做任何处理
+                handler(request)
+              } else {
+                extractAndValidateToken(request).flatMap {
+                  case (sub, payload) =>
+                    for
+                      ctx <- ZIO.service[JwtContent]
+                      // 只有 Access token 才设置上下文
+                      _ <- ZIO.when(payload.tokenType == Access) {
+                        ctx.set(sub)
+                      }
+                      response <- handler(request)
+                    yield response
+                }
+              })
 
-              case None if isDev =>
-                // 开发环境 + 无 token = 使用假的 payload
-                for
-                  _ <- logDevModeOnce
-                  ctx <- ZIO.service[JwtContent]
-                  _ <- ctx.set(devPayload)
-                  response <- handler(request)
-                yield response
+    private def extractAndValidateToken(request: Request): ZIO[JwtService, Response, (String, Payload)] =
+      extractToken(request).flatMap { token =>
+        for
+          jwtService <- ZIO.service[JwtService]
+          claim <- jwtService
+            .decode(token)
+            .mapError(_ => Response.unauthorized("Invalid or expired token"))
 
-              case _ =>
-                ZIO.fail(Response.unauthorized("Missing or invalid Authorization header"))
+          // 验证 token 是否过期
+          now = java.time.Instant.now().getEpochSecond
+          _ <- ZIO
+            .fail(Response.unauthorized("Token expired"))
+            .whenZIO(
+              ZIO.fromOption(claim.expiration)
+                .map(_ < now)
+                .orElse(ZIO.succeed(false)) // 如果没有过期时间，则不检查
+            )
+
+          // 提取 subject
+          sub <- ZIO
+            .fromOption(claim.subject)
+            .mapError(_ => Response.unauthorized("Missing subject in token"))
+
+          // 解析 payload
+          payload <- ZIO
+            .fromEither(claim.content.fromJson[Payload])
+            .mapError(e => Response.unauthorized(s"Invalid token payload: $e"))
+
+          // 验证 token 类型
+          _ <- ZIO
+            .fail(Response.unauthorized("Invalid token type"))
+            .unless(payload.tokenType == Access || payload.tokenType == Refresh)
+
+        yield (sub, payload)
+      }
+
+    private def extractToken(request: Request): ZIO[Any, Response, String] =
+      request.header(Header.Authorization) match
+        case Some(Header.Authorization.Bearer(token)) =>
+          ZIO.succeed(token.value.toArray.mkString)
+
+        case _ =>
+          // 尝试从 Cookie 中获取 token
+          request.cookie("access_token") match
+            case Some(cookie) =>
+              ZIO.succeed(cookie.content)
+            case None =>
+              ZIO.fail(Response.unauthorized("Missing authorization token"))

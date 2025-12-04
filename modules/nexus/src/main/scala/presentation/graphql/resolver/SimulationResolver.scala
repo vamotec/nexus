@@ -42,8 +42,8 @@ object SimulationResolver:
     // 查询项目下的所有仿真配置（返回简化列表）
     simulationsByProject = projectId =>
       (for
-        payload <- jwtContent.get.someOrFail(InvalidInput("access token", "Invalid payload"))
-        userId <- UserId.fromString(payload.userIdStr)
+        userIdStr <- jwtContent.get.someOrFail(InvalidInput("access token", "Invalid payload"))
+        userId <- UserId.fromString(userIdStr)
         proId <- ProjectId.fromString(projectId)
         // 1. 获取项目的所有仿真配置
         // 使用分页查询，获取前 100 个（可以根据需要调整）
@@ -68,8 +68,8 @@ object SimulationResolver:
     // 创建仿真配置
     createSimulation = request =>
       (for
-        payload <- jwtContent.get.someOrFail(InvalidInput("access token", "Invalid payload"))
-        userId <- UserId.fromString(payload.userIdStr)
+        userIdStr <- jwtContent.get.someOrFail(InvalidInput("access token", "Invalid payload"))
+        userId <- UserId.fromString(userIdStr)
         projectId <- ProjectId.fromString(request.projectId)
         // 1. 调用 service 创建仿真
         simulation <- service.createSimulation(

@@ -40,9 +40,8 @@ object TrainingResolver:
     // 查询当前用户的训练任务列表
     myTrainingJobs = limit =>
       (for
-        payload <- jwtContent.get.someOrFail(InvalidInput("access token", "Invalid payload"))
-        userId <- UserId.fromString(payload.userIdStr)
-
+        userIdStr <- jwtContent.get.someOrFail(InvalidInput("access token", "Invalid payload"))
+        userId <- UserId.fromString(userIdStr)
         // 1. 获取用户的训练任务
         jobs <- service.getMyTrainingJobs(userId, limit)
       yield jobs).mapError(_.toCalibanError),
@@ -63,9 +62,8 @@ object TrainingResolver:
     // 创建训练任务
     createTrainingJob = request =>
       (for
-        payload <- jwtContent.get.someOrFail(InvalidInput("access token", "Invalid payload"))
-        userId <- UserId.fromString(payload.userIdStr)
-
+        userIdStr <- jwtContent.get.someOrFail(InvalidInput("access token", "Invalid payload"))
+        userId <- UserId.fromString(userIdStr)
         // 1. 调用 service 创建训练任务
         response <- service.createTrainingJob(userId, request)
       yield response).mapError(_.toCalibanError),

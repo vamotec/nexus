@@ -1,7 +1,2 @@
--Xss8m
--Xms1G
--Xmx8G
--XX:+UseG1GC
--XX:+UnlockExperimentalVMOptions
--XX:+UseCompactObjectHeaders
--XX:MaxRAMPercentage=75
+-Xms4G
+-Xmx4G

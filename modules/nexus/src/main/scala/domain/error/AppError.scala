@@ -9,6 +9,7 @@ import caliban.quick.*
 import java.sql.SQLException
 import io.grpc.{Status, StatusException, StatusRuntimeException}
 import zio.*
+
 /** 应用错误基类 按照 HTTP 语义分为客户端错误(4xx)和服务端错误(5xx)
   */
 trait AppError extends Throwable:

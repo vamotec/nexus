@@ -67,7 +67,9 @@ final class TrainingServiceLive(
         config = trainingConfig,
         status = TrainingStatus.Queued,
         assignment = TrainingInstanceAssignment(
-          instanceId = None, gpuIds = List.empty, assignedAt = now
+          instanceId = None,
+          gpuIds = List.empty,
+          assignedAt = now
         ),
         progress = TrainingProgress(
           currentEpoch = 0,

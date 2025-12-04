@@ -10,7 +10,6 @@ case class DatabaseConfig(
 
 case class MigrationConfig(
   postgres: DatabaseConfig,
-  timescale: DatabaseConfig,
   locations: MigrationLocations,
   codegen: CodegenConfig,
   validateOnly: Boolean = false,
@@ -19,8 +18,7 @@ case class MigrationConfig(
 )
 
 case class MigrationLocations(
-  postgres: String = "classpath:db/migration/postgres",
-  timescale: String = "classpath:db/migration/timescale"
+  postgres: String = "classpath:db/migration/postgres"
 )
 
 case class CodegenConfig(
