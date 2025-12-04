@@ -1,7 +1,6 @@
 package app.mosia.nexus
 package domain
 
-import caliban.CalibanError
 import zio.*
 
 package object error:
@@ -18,11 +17,10 @@ package object error:
   export ValidationError.{InvalidInput, MissingRequiredField, InvalidFieldValue, BusinessRuleViolation, InvalidReference, SerializationError}
 
   // 导出工具类
-//  export ErrorResponse.*
+  export ErrorResponse.*
 
   // 常用类型别名
   type AppTask[+A] = ZIO[Any, AppError, A]
-  type CalTask[+A] = ZIO[Any, CalibanError, A]
 
   /** Extension 方法 */
   extension (error: Throwable)

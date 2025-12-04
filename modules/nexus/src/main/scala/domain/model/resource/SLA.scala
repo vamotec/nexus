@@ -5,11 +5,8 @@ import domain.model.common.{Bandwidth, DailyTimeRange}
 
 import java.time.{Instant, LocalTime}
 
-import caliban.schema.{ArgBuilder, Schema as Cs}
-import sttp.tapir.Schema
 import zio.json.*
 import zio.*
-import zio.json.ast.Json
 
 object SLA:
   /** 服务等级协议等级 */

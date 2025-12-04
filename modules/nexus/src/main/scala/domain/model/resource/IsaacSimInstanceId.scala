@@ -6,11 +6,7 @@ import domain.model.common.EntityId
 
 import java.util.UUID
 
-import caliban.schema.{ArgBuilder, Schema as Cs}
-import sttp.tapir.Schema
 import zio.json.*
-import zio.*
-import zio.json.ast.Json
 
 case class IsaacSimInstanceId(value: UUID) extends EntityId[IsaacSimInstanceId] derives JsonCodec
 

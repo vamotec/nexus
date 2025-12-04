@@ -4,11 +4,8 @@ package application.dto.request.simulation
 import application.dto.model.simulation.SimulationConfigDto
 import domain.model.simulation.SimulationStatus
 
-import caliban.schema.{ArgBuilder, Schema as Cs}
-import sttp.tapir.Schema
 import zio.json.*
 import zio.*
-import zio.json.ast.Json
 
 /** 更新仿真请求 DTO */
 case class UpdateSimulationRequest(
@@ -31,6 +28,4 @@ case class UpdateSimulationRequest(
   // 标签和元数据
   tags: Option[Set[String]] = None,
   metadata: Option[Map[String, String]] = None
-) derives JsonCodec,
-      Cs.SemiAuto,
-      ArgBuilder
+) derives JsonCodec

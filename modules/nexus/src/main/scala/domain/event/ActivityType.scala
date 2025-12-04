@@ -1,14 +1,13 @@
 package app.mosia.nexus
 package domain.event
 
-import caliban.schema.{ArgBuilder, Schema as Cs}
 import sttp.tapir.Schema
 import zio.json.*
 import zio.*
 import zio.json.ast.Json
 
 /** 项目活动类型 */
-enum ActivityType derives JsonCodec, Cs.SemiAuto:
+enum ActivityType derives JsonCodec:
   case ProjectCreated // 项目创建
   case ProjectUpdated // 项目更新
   case ProjectArchived // 项目归档

@@ -4,7 +4,6 @@ package application.dto.response.auth
 import application.dto.response.user.UserResponse
 import domain.model.user.TokenPair
 
-import caliban.schema.{ArgBuilder, Schema as Cs}
 import sttp.tapir.Schema
 import zio.json.*
 import zio.*

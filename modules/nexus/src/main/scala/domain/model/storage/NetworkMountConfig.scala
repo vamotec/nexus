@@ -1,11 +1,7 @@
 package app.mosia.nexus
 package domain.model.storage
 
-import caliban.schema.{ArgBuilder, Schema as Cs}
-import sttp.tapir.Schema
-import zio.json.*
 import zio.*
-import zio.json.ast.Json
 
 /** 网络挂载配置 */
 case class NetworkMountConfig(

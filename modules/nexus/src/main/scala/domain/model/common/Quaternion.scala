@@ -1,7 +1,6 @@
 package app.mosia.nexus
 package domain.model.common
 
-import caliban.schema.{ArgBuilder, Schema as Cs}
 import sttp.tapir.Schema
 import zio.json.*
 import zio.*
@@ -10,9 +9,7 @@ import zio.json.ast.Json
 /** 四元数 - 用于表示旋转 */
 case class Quaternion(x: Double, y: Double, z: Double, w: Double) extends ValueObject
     derives JsonCodec,
-      Schema,
-      Cs.SemiAuto,
-      ArgBuilder:
+      Schema:
   def normalized: Quaternion =
     val mag = math.sqrt(x * x + y * y + z * z + w * w)
     if (mag > 0) Quaternion(x / mag, y / mag, z / mag, w / mag)

@@ -3,13 +3,10 @@ package domain.model.common
 
 import domain.model.user.UserId
 
-import java.time.Instant
+import zio.Duration
 
-import caliban.schema.{ArgBuilder, Schema as Cs}
-import sttp.tapir.Schema
+import java.time.Instant
 import zio.json.*
-import zio.*
-import zio.json.ast.Json
 
 object Version:
   /** 模板版本信息 */

@@ -3,7 +3,6 @@ package application.dto.model.scene
 
 import domain.model.common.Position3D
 
-import caliban.schema.{Schema as Cs, ArgBuilder}
 import sttp.tapir.Schema
 import zio.json.*
 import zio.*

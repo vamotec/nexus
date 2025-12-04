@@ -2,7 +2,6 @@ package app.mosia.nexus
 package domain.model.scene
 
 import domain.model.common.Color
-import caliban.schema.{ArgBuilder, Schema as Cs}
 import sttp.tapir.Schema
 import zio.json.*
 import zio.*

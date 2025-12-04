@@ -3,13 +3,9 @@ package domain.model.session
 
 import domain.model.scene.SceneConfig
 import domain.model.simulation.{SimulationId, SimulationParams}
-import org.postgresql.util.PGobject
 
 import java.time.Instant
 import java.util.UUID
-import io.getquill.MappedEncoding
-import caliban.schema.{ArgBuilder, Schema as Cs}
-import sttp.tapir.Schema
 import zio.json.*
 import zio.*
 import zio.json.ast.Json

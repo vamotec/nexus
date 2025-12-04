@@ -4,8 +4,6 @@ package application.dto.request.simulation
 import application.dto.model.simulation.SimulationConfigDto
 import domain.model.project.ProjectId
 
-import caliban.schema.{ArgBuilder, Schema as Cs}
-import sttp.tapir.Schema
 import zio.json.*
 import zio.*
 import zio.json.ast.Json
@@ -27,6 +25,4 @@ case class CreateSimulationRequest(
 
   // 标签 (用于分类和搜索)
   tags: List[String] = List.empty
-) derives JsonCodec,
-      Cs.SemiAuto,
-      ArgBuilder
+) derives JsonCodec

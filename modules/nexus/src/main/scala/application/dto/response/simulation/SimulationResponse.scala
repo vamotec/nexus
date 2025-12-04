@@ -7,10 +7,7 @@ import domain.model.simulation.{Simulation, SimulationId, SimulationStatus}
 
 import java.time.Instant
 
-import caliban.schema.{ArgBuilder, Schema as Cs}
 import zio.json.*
-import zio.*
-import zio.json.ast.Json
 
 case class SimulationResponse(
   simulationId: String,
@@ -18,5 +15,4 @@ case class SimulationResponse(
   description: Option[String],
   sceneConfig: SceneConfigDto,
   createdAt: String
-) derives JsonCodec,
-      Cs.SemiAuto
+) derives JsonCodec

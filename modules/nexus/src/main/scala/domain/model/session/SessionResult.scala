@@ -5,11 +5,8 @@ import domain.error.*
 import domain.model.training.TrainingResult
 
 import java.time.Instant
-import caliban.schema.{ArgBuilder, Schema as Cs}
-import sttp.tapir.Schema
 import zio.json.*
 import zio.*
-import zio.json.ast.Json
 
 /** 会话结果 (完成后写入，不可变) */
 case class SessionResult(
@@ -89,31 +86,3 @@ object SessionResult:
       trainingResult,
       createdAt
     )
-
-//  def fromEntity(entity: SessionResultEntity): SessionResult =
-//    val training =
-//      for
-//        model <- entity.modelPath
-//        check <- entity.checkpointPath
-//        reward <- entity.finalReward
-//        metrics <- entity.finalMetrics
-//      yield TrainingResult(
-//        modelPath = model,
-//        checkpointPath = check,
-//        finalReward = reward,
-//        finalMetrics = metrics
-//      )
-//    SessionResult(
-//      sessionId = SessionId(entity.sessionId),
-//      success = entity.success,
-//      completionTime = entity.completionTime,
-//      goalReached = entity.goalReached,
-//      pathLength = entity.pathLength,
-//      collisions = entity.collisions,
-//      energyConsumption = entity.energyConsumption,
-//      customMetrics = entity.customMetrics.toJson,
-//      trajectoryUrl = entity.trajectoryUrl,
-//      videoUrl = entity.videoUrl,
-//      trainingResult = training,
-//      createdAt = entity.createdAt
-//    )

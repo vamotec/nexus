@@ -2,11 +2,8 @@ package app.mosia.nexus
 package domain.model.scene
 
 import domain.model.common.{Position3D, ValueObject}
-import caliban.schema.{ArgBuilder, Schema as Cs}
-import sttp.tapir.Schema
 import zio.json.*
 import zio.*
-import zio.json.ast.Json
 
 /** 场景配置 * */
 case class SceneConfig(

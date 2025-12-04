@@ -1,7 +1,6 @@
 package app.mosia.nexus
 package domain.model.task
 
-import caliban.schema.{ArgBuilder, Schema as Cs}
 import sttp.tapir.Schema
 import zio.json.*
 import zio.*

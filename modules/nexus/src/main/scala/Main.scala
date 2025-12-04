@@ -17,7 +17,6 @@ import infrastructure.redis.LettuceRedis
 import infrastructure.resource.ResourceAllocationServiceLive
 import infrastructure.verification.VerificationCodeServiceLive
 import presentation.Middleware
-import presentation.graphql.GraphQLApi
 import presentation.http.RESTApi
 import presentation.websocket.WsRoutes
 
@@ -54,7 +53,6 @@ object Main extends ZIOAppDefault:
       public <- RESTApi.makePublic(config)
       secure <- RESTApi.makeSecure
       ws      = WsRoutes.routes
-//      grapql <- GraphQLApi.make 放弃开发graphql，专注REST API开发
       // 业务路由（需要认证和CORS）
       httpRoute = ws @@ cors(Middleware.corsConfig(config))
       business = (secure ++ httpRoute) @@ Middleware.auth

@@ -1,7 +1,6 @@
 package app.mosia.nexus
 package domain.event
 
-import caliban.schema.{ArgBuilder, Schema as Cs}
 import sttp.tapir.Schema
 import zio.json.*
 import zio.*
@@ -29,5 +28,4 @@ case class ProjectActivityEvent(
 
   // 时间戳
   timestamp: Long // Unix timestamp (毫秒)
-) derives Cs.SemiAuto,
-      JsonCodec
+) derives JsonCodec

@@ -6,13 +6,9 @@ import domain.model.common.EntityId
 
 import java.util.UUID
 
-import caliban.schema.{ArgBuilder, Schema as Cs}
-import sttp.tapir.Schema
 import zio.json.*
-import zio.*
-import zio.json.ast.Json
 
-case class SimulationId(value: UUID) extends EntityId[SimulationId] derives JsonCodec, Cs.SemiAuto, ArgBuilder
+case class SimulationId(value: UUID) extends EntityId[SimulationId] derives JsonCodec
 
 object SimulationId:
   def generate(): SimulationId = SimulationId(UUID.randomUUID())

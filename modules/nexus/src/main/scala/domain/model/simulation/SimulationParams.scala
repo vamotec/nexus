@@ -5,8 +5,6 @@ import domain.error.*
 import domain.model.common.{PhysicsEngine, ValueObject}
 import domain.model.scene.Environment
 
-import io.getquill.MappedEncoding
-import caliban.schema.{ArgBuilder, Schema as Cs}
 import sttp.tapir.Schema
 import zio.json.*
 import zio.*
@@ -19,8 +17,4 @@ case class SimulationParams(
   realTime: Boolean = true,
   recordVideo: Boolean = true,
   recordTrajectory: Boolean = true
-) extends ValueObject derives JsonCodec, Schema, Cs.SemiAuto, ArgBuilder
-
-//object SimulationParams:
-//  def fromString(str: String): Either[String, SimulationParams] =
-//    str.fromJson[SimulationParams]
+) extends ValueObject derives JsonCodec, Schema

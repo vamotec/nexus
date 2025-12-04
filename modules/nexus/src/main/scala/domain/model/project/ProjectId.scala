@@ -4,15 +4,13 @@ package domain.model.project
 import domain.error.AppTask
 import domain.model.common.EntityId
 
-import caliban.schema.{ArgBuilder, Schema as Cs}
 import sttp.tapir.Schema
 import zio.json.*
 import zio.*
-import zio.json.ast.Json
 
 import java.util.UUID
 
-case class ProjectId(value: UUID) extends EntityId[ProjectId] derives JsonCodec, Schema, Cs.SemiAuto, ArgBuilder
+case class ProjectId(value: UUID) extends EntityId[ProjectId] derives JsonCodec, Schema
 
 object ProjectId:
   def fromString(str: String): AppTask[ProjectId] =

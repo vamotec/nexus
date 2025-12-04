@@ -3,11 +3,10 @@ package domain.model.organization
 
 import domain.model.common.ValueObject
 
-import caliban.schema.{ArgBuilder, Schema as Cs}
 import sttp.tapir.Schema
 import zio.json.*
 
-enum PlanType extends ValueObject derives JsonCodec, Schema, Cs.SemiAuto, ArgBuilder:
+enum PlanType extends ValueObject derives JsonCodec, Schema:
   case Free, Premium, Enterprise
 
 object PlanType:

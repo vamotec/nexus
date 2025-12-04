@@ -1,10 +1,8 @@
 package app.mosia.nexus
 package application.dto.model.scene
 
-import application.dto.{given_ArgBuilder_Json, given_Schema_Any_Json}
 import domain.model.common.Position3D
 
-import caliban.schema.{ArgBuilder, Schema as Cs}
 import zio.json.*
 import zio.*
 import zio.json.ast.Json
@@ -41,6 +39,4 @@ case class SceneConfigDto(
   // 高级配置 (JSON，用于环境光照、物理等复杂配置)
   advancedConfig: Option[Json] = None
   // 例如: {"lighting": {"intensity": 1.0}, "physics": {"gravity": -9.81}}
-) derives JsonCodec,
-      Cs.SemiAuto,
-      ArgBuilder
+) derives JsonCodec

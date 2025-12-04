@@ -2,7 +2,6 @@ package app.mosia.nexus
 package domain.model.organization
 
 import java.time.Instant
-import caliban.schema.{ArgBuilder, Schema as Cs}
 import sttp.tapir.Schema
 import zio.json.*
 

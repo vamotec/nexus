@@ -1,7 +1,6 @@
 package app.mosia.nexus
 package domain.model.common
 
-import caliban.schema.{ArgBuilder, Schema as Cs}
 import sttp.tapir.Schema
 import zio.json.*
 import zio.*
@@ -9,10 +8,7 @@ import zio.json.ast.Json
 
 /** 三维位置 - 用于仿真中的精确坐标表示 */
 case class Position3D(x: Double, y: Double, z: Double) extends ValueObject
-    derives JsonCodec,
-      Schema,
-      Cs.SemiAuto,
-      ArgBuilder:
+    derives JsonCodec, Schema:
   // 算术运算
   def +(other: Position3D): Position3D =
     Position3D(x + other.x, y + other.y, z + other.z)

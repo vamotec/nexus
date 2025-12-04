@@ -1,11 +1,9 @@
 package app.mosia.nexus
 package application.dto.response.project
 
-import caliban.schema.{ArgBuilder, Schema as Cs}
 import sttp.tapir.Schema
 import zio.json.*
 import zio.*
-import zio.json.ast.Json
 
 /** 项目响应 DTO
   *
@@ -22,6 +20,4 @@ case class ProjectResponse(
   status: Option[String] = None, // "active" | "archived"
   tags: List[String] = Nil
 ) derives JsonCodec,
-      Schema,
-      Cs.SemiAuto,
-      ArgBuilder
+      Schema

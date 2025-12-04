@@ -1,7 +1,6 @@
 package app.mosia.nexus
 package application.dto.request.project
 
-import caliban.schema.{ArgBuilder, Schema as Cs}
 import sttp.tapir.Schema
 import zio.json.*
 import zio.*
@@ -17,6 +16,4 @@ case class UpdateProjectRequest(
   tags: Option[List[String]] = None,
   archived: Option[Boolean] = None // 是否归档
 ) derives JsonCodec,
-      Schema,
-      Cs.SemiAuto,
-      ArgBuilder
+      Schema

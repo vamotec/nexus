@@ -3,12 +3,6 @@ package application.dto.response.session
 
 import domain.model.common.Position3D
 
-import caliban.schema.{ArgBuilder, Schema as Cs}
-import sttp.tapir.Schema
-import zio.json.*
-import zio.*
-import zio.json.ast.Json
-
 /** 会话指标响应 DTO
   *
   * 用于返回会话运行时的实时指标信息
@@ -32,5 +26,4 @@ case class SessionMetricsResponse(
 
   // 最后更新时间
   lastUpdatedAt: Long // Unix timestamp (毫秒)
-) derives Cs.SemiAuto,
-      ArgBuilder
+)

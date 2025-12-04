@@ -1,13 +1,10 @@
 package app.mosia.nexus
 package domain.model.session
 
-import caliban.schema.{ArgBuilder, Schema as Cs}
-import sttp.tapir.Schema
 import zio.json.*
 import zio.*
-import zio.json.ast.Json
 
-enum SessionStatus derives JsonCodec, Cs.SemiAuto, ArgBuilder:
+enum SessionStatus derives JsonCodec:
   case Pending, Initializing, Running, Paused, Stopped, Failed, Completed
 
   def isActive: Boolean = this match

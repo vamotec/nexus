@@ -4,11 +4,7 @@ package domain.model.resource
 import domain.model.common.Bandwidth
 import domain.model.network.PortRequirement
 
-import caliban.schema.{ArgBuilder, Schema as Cs}
-import sttp.tapir.Schema
-import zio.json.*
-import zio.*
-import zio.json.ast.Json
+import zio.Duration
 
 /** 网络需求 */
 case class NetworkRequirements(

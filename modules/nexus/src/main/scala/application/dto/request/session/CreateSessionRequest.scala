@@ -4,11 +4,8 @@ package application.dto.request.session
 import application.dto.model.scene.ObstacleDto
 import domain.model.common.Position3D
 
-import caliban.schema.{ArgBuilder, Schema as Cs}
 import sttp.tapir.Schema
 import zio.json.*
-import zio.*
-import zio.json.ast.Json
 
 /** 创建会话请求 DTO
   *
@@ -25,6 +22,4 @@ case class CreateSessionRequest(
   renderQuality: String = "medium",
   mode: String = "manual" // 会话模式: manual, training, hybrid
 ) derives JsonCodec,
-      Schema,
-      Cs.SemiAuto,
-      ArgBuilder
+      Schema

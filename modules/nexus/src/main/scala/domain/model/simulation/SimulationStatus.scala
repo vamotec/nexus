@@ -1,13 +1,10 @@
 package app.mosia.nexus
 package domain.model.simulation
 
-import caliban.schema.{ArgBuilder, Schema as Cs}
 import sttp.tapir.Schema
 import zio.json.*
-import zio.*
-import zio.json.ast.Json
 
-enum SimulationStatus derives JsonCodec, Schema, Cs.SemiAuto, ArgBuilder:
+enum SimulationStatus derives JsonCodec, Schema:
   case Pending // 已创建，等待启动
   case Running // 运行中
   case Completed // 正常结束

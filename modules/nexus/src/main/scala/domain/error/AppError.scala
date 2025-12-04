@@ -1,11 +1,6 @@
 package app.mosia.nexus
 package domain.error
 
-import caliban.CalibanError
-import caliban.ResponseValue.ObjectValue
-import caliban.Value.{IntValue, StringValue}
-import caliban.quick.*
-
 import java.sql.SQLException
 import io.grpc.{Status, StatusException, StatusRuntimeException}
 import zio.*
@@ -350,17 +345,4 @@ object AppError:
     constraintName.split("_").headOption.map(_.capitalize)
 
   extension (error: AppError)
-    def toCalibanError: CalibanError =
-      CalibanError.ExecutionError(
-        error.message,
-        extensions = Some(
-          ObjectValue(
-            List(
-              "code" -> StringValue(error.errorCode),
-              "httpStatus" -> IntValue(error.httpStatus)
-            )
-          )
-        )
-      )
-
     def toErrorResponse: ErrorResponse = ErrorResponse.from(error)

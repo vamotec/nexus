@@ -3,15 +3,10 @@ package domain.model.scene
 
 import domain.error.*
 import domain.model.common.*
-import org.postgresql.util.PGobject
 
 import java.util.UUID
-import io.getquill.MappedEncoding
-import caliban.schema.{ArgBuilder, Schema as Cs}
-import sttp.tapir.Schema
 import zio.json.*
 import zio.*
-import zio.json.ast.Json
 
 /** 障碍物 */
 case class Obstacle(

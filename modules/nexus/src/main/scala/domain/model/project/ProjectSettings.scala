@@ -1,13 +1,9 @@
 package app.mosia.nexus
 package domain.model.project
 
-import caliban.schema.{ArgBuilder, Schema as Cs}
 import sttp.tapir.Schema
 import zio.json.*
-import zio.*
 import zio.json.ast.Json
-
-import io.getquill.MappedEncoding
 
 case class ProjectSettings(
   defaultEnvironment: String,

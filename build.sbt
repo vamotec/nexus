@@ -18,20 +18,19 @@ ThisBuild / scalacOptions ++= Seq(
 // 依赖版本
 lazy val Versions = new {
   val zio = "2.1.23"
-  val zioHttp = "3.7.0"
+  val zioHttp = "3.7.1"
   val zioConfig = "4.0.6"
   val zioJson = "0.7.45"
   val zioLog = "2.5.2"
-  val caliban = "2.11.1"
   val quill = "4.8.6"
-  val flyway = "11.17.2"
+  val flyway = "11.18.0"
   val postgresql = "42.7.8"
   val grpc = "1.77.0"
   val scalapb = "0.11.20"
   val kafka = "3.6.1"
   val jwt = "11.0.3"
   val prometheus = "0.16.0"
-  val tapir = "1.12.5"
+  val tapir = "1.12.6"
   val slick = "3.6.1"
   val amqp = "0.5.0"
 }
@@ -45,8 +44,8 @@ lazy val codegen = project
     Compile / mainClass := Some("app.mosia.nexus.codegen.CodegenRunner"),
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio" % Versions.zio,
-      "dev.zio" %% "zio-logging" % "2.5.1",
-      "dev.zio" %% "zio-logging-slf4j" % "2.5.1",
+      "dev.zio" %% "zio-logging" % Versions.zioLog,
+      "dev.zio" %% "zio-logging-slf4j" % Versions.zioLog,
       "dev.zio" %% "zio-config" % Versions.zioConfig,
       "dev.zio" %% "zio-config-typesafe" % Versions.zioConfig,
       "dev.zio" %% "zio-config-magnolia" % Versions.zioConfig,
@@ -68,8 +67,8 @@ lazy val migration = project
     Compile / mainClass := Some("app.mosia.nexus.migration.MigrationRunner"),
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio" % Versions.zio,
-      "dev.zio" %% "zio-logging" % "2.5.1",
-      "dev.zio" %% "zio-logging-slf4j" % "2.5.1",
+      "dev.zio" %% "zio-logging" % Versions.zioLog,
+      "dev.zio" %% "zio-logging-slf4j" % Versions.zioLog,
       "dev.zio" %% "zio-config" % Versions.zioConfig,
       "dev.zio" %% "zio-config-typesafe" % Versions.zioConfig,
       "dev.zio" %% "zio-config-magnolia" % Versions.zioConfig,
@@ -156,10 +155,6 @@ lazy val nexus = project
 
       // ZIO HTTP
       "dev.zio" %% "zio-http" % Versions.zioHttp,
-
-      // GraphQL (Caliban)
-      "com.github.ghostdogpr" %% "caliban" % Versions.caliban,
-      "com.github.ghostdogpr" %% "caliban-zio-http" % Versions.caliban,
 
       // JSON
       "dev.zio" %% "zio-json" % Versions.zioJson,

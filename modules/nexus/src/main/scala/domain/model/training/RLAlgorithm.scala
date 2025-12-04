@@ -1,11 +1,8 @@
 package app.mosia.nexus
 package domain.model.training
 
-import caliban.schema.{ArgBuilder, Schema as Cs}
-import sttp.tapir.Schema
-import zio.json.*
 import zio.*
-import zio.json.ast.Json
+import zio.json.*
 
 enum RLAlgorithm derives JsonCodec:
   case PPO, SAC, TD3, DQN

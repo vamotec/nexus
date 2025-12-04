@@ -1,11 +1,8 @@
 package app.mosia.nexus
 package application.dto.response
 
-import caliban.schema.{ArgBuilder, Schema as Cs}
-import sttp.tapir.Schema
-import zio.json.*
 import zio.*
-import zio.json.ast.Json
+import zio.json.*
 
 final case class IpApiResponse(
   status: String,

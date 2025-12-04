@@ -1,11 +1,8 @@
 package app.mosia.nexus
 package application.dto.request.training
 
-import caliban.schema.{ArgBuilder, Schema as Cs}
-import sttp.tapir.Schema
 import zio.json.*
-import zio.*
-import zio.json.ast.Json
+
 
 case class CreateTrainingRequest(
   sessionId: String,
@@ -14,6 +11,4 @@ case class CreateTrainingRequest(
   batchSize: Int,
   learningRate: Double,
   rewardFunction: String
-) derives JsonCodec,
-      Cs.SemiAuto,
-      ArgBuilder
+) derives JsonCodec

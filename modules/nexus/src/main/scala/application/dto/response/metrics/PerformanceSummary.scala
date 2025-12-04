@@ -1,12 +1,6 @@
 package app.mosia.nexus
 package application.dto.response.metrics
 
-import caliban.schema.{ArgBuilder, Schema as Cs}
-import sttp.tapir.Schema
-import zio.json.*
-import zio.*
-import zio.json.ast.Json
-
 case class PerformanceSummary(
   avgFps: Double,
   maxFps: Double,
@@ -17,5 +11,4 @@ case class PerformanceSummary(
   peakGpuMemoryMb: Long,
   duration: Long,
   health: HealthStatus
-) derives Cs.SemiAuto,
-      ArgBuilder
+)

@@ -2,11 +2,8 @@ package app.mosia.nexus
 package application.dto.model.simulation
 
 import application.dto.model.scene.SceneConfigDto
-import application.dto.{given_ArgBuilder_Json, given_Schema_Any_Json}
 import domain.model.simulation.SimulationParams
 
-import caliban.schema.{ArgBuilder, Schema as Cs}
-import sttp.tapir.Schema
 import zio.json.*
 import zio.*
 import zio.json.ast.Json
@@ -36,6 +33,4 @@ case class SimulationConfigDto(
 
   // 元数据 (可选)
   metadata: Option[Map[String, String]] = None
-) derives JsonCodec,
-      Cs.SemiAuto,
-      ArgBuilder
+) derives JsonCodec

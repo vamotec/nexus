@@ -5,12 +5,6 @@ import domain.model.common.{Position3D, Velocity}
 
 import java.time.Instant
 
-import caliban.schema.{ArgBuilder, Schema as Cs}
-import sttp.tapir.Schema
-import zio.json.*
-import zio.*
-import zio.json.ast.Json
-
 case class RealtimeMetricsResponse(
   sessionId: String,
   simulationId: String,
@@ -27,5 +21,4 @@ case class RealtimeMetricsResponse(
   utilization: Double, // 0-100
   memoryUsed: Long, // MB
   memoryTotal: Option[Long] = None
-) derives Cs.SemiAuto,
-      ArgBuilder
+)

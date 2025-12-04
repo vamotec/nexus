@@ -3,7 +3,6 @@ package application.dto.model.scene
 
 import domain.model.common.*
 
-import caliban.schema.{Schema as Cs, ArgBuilder}
 import sttp.tapir.Schema
 import zio.json.*
 import zio.*
@@ -30,6 +29,4 @@ case class ObstacleDto(
   customMaterial: Option[MaterialDto] = None,
   dynamic: Boolean = false // 是否动态障碍物
 ) derives JsonCodec,
-      Schema,
-      Cs.SemiAuto,
-      ArgBuilder
+      Schema

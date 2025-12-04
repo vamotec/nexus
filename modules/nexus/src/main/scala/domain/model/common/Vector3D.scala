@@ -1,19 +1,15 @@
 package app.mosia.nexus
 package domain.model.common
 
-import caliban.schema.{ArgBuilder, Schema as Cs}
-import sttp.tapir.Schema
 import zio.json.*
 import zio.*
-import zio.json.ast.Json
 
 /** 三维向量 - 用于表示位置、方向、速度等 */
 case class Vector3D(
   x: Double,
   y: Double,
   z: Double
-) derives JsonCodec,
-      Cs.SemiAuto:
+) derives JsonCodec:
   // 向量运算
   def +(other: Vector3D): Vector3D =
     Vector3D(x + other.x, y + other.y, z + other.z)

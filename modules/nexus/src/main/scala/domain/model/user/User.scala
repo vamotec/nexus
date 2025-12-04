@@ -4,7 +4,6 @@ package domain.model.user
 import domain.model.organization.OrganizationId
 
 import java.time.Instant
-import caliban.schema.{ArgBuilder, Schema as Cs}
 import sttp.tapir.Schema
 import zio.json.*
 import zio.*
